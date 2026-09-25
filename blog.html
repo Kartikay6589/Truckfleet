@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog - TruckFleet Pro</title>
+  <script src="site-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="index.css" />
+  <style>
+    .legal-container {
+      max-width: 800px;
+      margin: 100px auto 60px;
+      padding: 40px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+    }
+    .legal-container h1 { font-size: 2.5rem; margin-bottom: 1.5rem; color: var(--heading); }
+    .legal-container p.intro { font-size: 1.1rem; color: var(--text2); margin-bottom: 2rem; line-height: 1.7; }
+    
+    .blog-post {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      transition: all 0.2s ease;
+    }
+    .blog-post:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .blog-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--heading);
+      margin-bottom: 0.5rem;
+    }
+    .blog-meta {
+      font-size: 0.9rem;
+      color: var(--text3);
+      margin-bottom: 1rem;
+    }
+    .blog-excerpt {
+      font-size: 1rem;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+    .read-more {
+      display: inline-block;
+      margin-top: 1rem;
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .read-more:hover { text-decoration: underline; }
+    
+  </style>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+  <nav class="navbar" id="navbar">
+    <a href="index.html" class="nav-logo" style="text-decoration:none">
+      <span class="logo-icon">🚛</span>
+      <span class="logo-text">Truck<span class="logo-accent">Fleet</span> Pro</span>
+    </a>
+  </nav>
+
+  <div class="legal-container">
+    <a href="index.html" class="btn btn-primary" style="display: inline-block; margin-bottom: 20px;">← Back to Home</a>
+    <h1>TruckFleet Insights Blog</h1>
+    <p class="intro">Stay up to date with the latest news, product updates, and industry insights from the TruckFleet Pro team.</p>
+
+    <div class="blog-post">
+      <div class="blog-title">Introducing Dynamic Profit Tracking</div>
+      <div class="blog-meta">Published on June 15, 2026 • 3 min read</div>
+      <p class="blog-excerpt">We've just rolled out a major update to the Fleet Owner Dashboard! You can now track your specific expenses (Fuel, Toll, Driver fees) on a per-trip basis and automatically calculate your net profit or loss directly within the app.</p>
+      <a href="blog-article-1.html" class="read-more">Read Full Article →</a>
+    </div>
+
+    <div class="blog-post">
+      <div class="blog-title">5 Ways to Maximize Your Truck's Fuel Efficiency</div>
+      <div class="blog-meta">Published on May 28, 2026 • 5 min read</div>
+      <p class="blog-excerpt">Fuel is the single largest expense for any independent truck owner. In this article, we dive deep into actionable strategies to reduce idle time, optimize your route planning, and squeeze more mileage out of every drop of diesel.</p>
+      <a href="blog-article-2.html" class="read-more">Read Full Article →</a>
+    </div>
+
+    <div class="blog-post">
+      <div class="blog-title">How Digital Logistics is Eliminating Middlemen</div>
+      <div class="blog-meta">Published on April 10, 2026 • 7 min read</div>
+      <p class="blog-excerpt">For decades, freight brokers have taken large cuts out of drivers' earnings. Learn how decentralized platforms like TruckFleet Pro are flipping the script by connecting enterprise companies directly with the fleet owners who actually do the heavy lifting.</p>
+      <a href="blog-article-3.html" class="read-more">Read Full Article →</a>
+    </div>
+
+  </div>
+
+  <script src="cursor-static.js"></script>
+</body>
+</html>

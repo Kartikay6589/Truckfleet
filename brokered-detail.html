@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brokered Trip Details — TruckFleet Pro</title>
+  <script src="site-config.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="trip-detail.css" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+
+  <div class="cursor-circle" id="cursor-circle"></div>
+  <div class="cursor-dot"    id="cursor-dot"></div>
+  <div class="theme-ripple"  id="theme-ripple"></div>
+  <div class="theme-flash"   id="theme-flash"></div>
+
+  <!-- Topbar -->
+  <header class="topbar" id="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" onclick="history.back()">← Back</button>
+      <a href="dashboard.html" class="topbar-logo">
+        <span class="logo-icon">🚛</span>
+        <span class="logo-text">Truck<span class="logo-accent">Fleet</span> Pro</span>
+      </a>
+    </div>
+    <div class="topbar-right">
+    </div>
+  </header>
+
+  <!-- Main page -->
+  <div class="td-page">
+
+    <!-- Loading state -->
+    <div id="td-loading" class="td-loading">
+      <div class="td-spinner"></div>
+      <p>Loading trip details…</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="td-error" class="td-error" style="display:none">
+      <div class="es-icon">⚠️</div>
+      <h2>Trip Not Found</h2>
+      <p>This brokered trip may have been deleted or the link is invalid.</p>
+      <a href="dashboard.html" class="btn-back-dash">← Go to Dashboard</a>
+    </div>
+
+    <!-- Trip detail content -->
+    <div id="td-content" style="display:none">
+
+      <!-- Header -->
+      <div class="td-header">
+        <div class="td-header-left">
+          <span class="td-trip-label" style="background:var(--teal-bg); color:var(--teal); border-color:var(--teal);">Brokered Trip</span>
+          <h1 class="td-title" id="td-route">Delhi → Mumbai</h1>
+          <div class="td-vehicle-badge" id="td-vehicle-badge" style="color:var(--teal); border-color:var(--teal); background:var(--teal-bg);">🤝 Company to Owner Brokerage</div>
+        </div>
+        <div class="td-status-badge" id="td-status-badge" style="background:var(--green-bg); color:var(--green); border-color:var(--green);">✅ Completed</div>
+      </div>
+
+      <!-- Info grid -->
+      <div class="td-info-grid">
+
+        <!-- Route card -->
+        <div class="td-card td-card-route">
+          <h3 class="td-card-title">📍 Route Details</h3>
+          <div class="td-route-visual">
+            <div class="td-route-point">
+              <div class="td-rp-dot dot-from"></div>
+              <div class="td-rp-info">
+                <span class="td-rp-label">Pickup From</span>
+                <span class="td-rp-value" id="td-from">—</span>
+              </div>
+            </div>
+            <div class="td-route-line"></div>
+            <div class="td-route-point">
+              <div class="td-rp-dot dot-to"></div>
+              <div class="td-rp-info">
+                <span class="td-rp-label">Deliver To</span>
+                <span class="td-rp-value" id="td-to">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Financial card -->
+        <div class="td-card td-card-payment">
+          <h3 class="td-card-title">💰 Financial Breakdown</h3>
+          <div class="td-pay-rows">
+            <div class="td-pay-row">
+              <span class="td-pay-label">Amount Sold To Company</span>
+              <span class="td-pay-value" id="td-sell" style="color: var(--success)">₹0</span>
+            </div>
+            <div class="td-pay-row">
+              <span class="td-pay-label">Amount Purchased From Owner</span>
+              <span class="td-pay-value" id="td-purchase" style="color: var(--danger)">₹0</span>
+            </div>
+            <div class="td-pay-divider"></div>
+            <div class="td-pay-row td-pay-row-balance" style="margin-top: 0.5rem; background: var(--bg); padding: 0.75rem; border-radius: 8px;">
+              <span class="td-pay-label" id="td-profit-label" style="font-weight: 600; font-size: 1.1rem;">Net Profit</span>
+              <span class="td-pay-value" id="td-profit" style="font-size: 1.3rem;">₹0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Party card -->
+        <div class="td-card td-card-vehicle">
+          <h3 class="td-card-title">🏢 Party Info</h3>
+          <div class="td-veh-rows">
+            <div class="td-veh-row">
+              <span class="td-veh-label">Company Name</span>
+              <span class="td-veh-value" id="td-company">—</span>
+            </div>
+            <div class="td-veh-row">
+              <span class="td-veh-label">Owner Name</span>
+              <span class="td-veh-value" id="td-owner">—</span>
+            </div>
+            <div class="td-veh-row">
+              <span class="td-veh-label">Vehicle Number</span>
+              <span class="td-veh-value" id="td-veh-number">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeline card -->
+        <div class="td-card td-card-timeline">
+          <h3 class="td-card-title">📅 Timeline</h3>
+          <div class="td-timeline">
+            <div class="td-tl-item">
+              <div class="td-tl-dot tl-dot-done"></div>
+              <div class="td-tl-info">
+                <span class="td-tl-event">Brokered Deal Registered</span>
+                <span class="td-tl-date" id="td-registered">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end td-info-grid -->
+
+    </div><!-- end td-content -->
+  </div><!-- end td-page -->
+
+  <!-- Custom Confirm Modal -->
+  <div class="confirm-overlay" id="custom-confirm-overlay">
+    <div class="confirm-box">
+      <div class="cb-icon">❓</div>
+      <h3 class="cb-title">Please Confirm</h3>
+      <p class="cb-message" id="custom-confirm-message">Are you sure?</p>
+      <div class="cb-actions">
+        <button class="cb-btn cb-btn-cancel" id="custom-confirm-cancel">Cancel</button>
+        <button class="cb-btn cb-btn-ok" id="custom-confirm-ok">Yes, Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="brokered-detail.js"></script>
+</body>
+</html>

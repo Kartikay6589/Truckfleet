@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trip Details — TruckFleet Pro</title>
+  <script src="site-config.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="trip-detail.css" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+
+  <div class="cursor-circle" id="cursor-circle"></div>
+  <div class="cursor-dot"    id="cursor-dot"></div>
+  <div class="theme-ripple"  id="theme-ripple"></div>
+  <div class="theme-flash"   id="theme-flash"></div>
+
+  <!-- Topbar -->
+  <header class="topbar" id="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" onclick="location.href='dashboard.html#trips'">← Back</button>
+      <a href="dashboard.html" class="topbar-logo">
+        <span class="logo-icon">🚛</span>
+        <span class="logo-text">Truck<span class="logo-accent">Fleet</span> Pro</span>
+      </a>
+    </div>
+    <div class="topbar-right">
+    </div>
+  </header>
+
+  <!-- Main page -->
+  <div class="td-page">
+
+    <!-- Loading state -->
+    <div id="td-loading" class="td-loading">
+      <div class="td-spinner"></div>
+      <p>Loading trip details…</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="td-error" class="td-error" style="display:none">
+      <div class="es-icon">⚠️</div>
+      <h2>Trip Not Found</h2>
+      <p>This trip may have been deleted or the link is invalid.</p>
+      <a href="dashboard.html" class="btn-back-dash">← Go to Dashboard</a>
+    </div>
+
+    <!-- Trip detail content -->
+    <div id="td-content" style="display:none">
+
+      <!-- Header -->
+      <div class="td-header">
+        <div class="td-header-left">
+          <span class="td-trip-label">Trip #<span id="td-trip-num">1</span></span>
+          <h1 class="td-title" id="td-route">Delhi → Mumbai</h1>
+          <div class="td-vehicle-badge" id="td-vehicle-badge">🚛 UP-32-AB-1234 · Container Truck</div>
+        </div>
+        <div class="td-header-right" style="display:flex; flex-direction:column; align-items:flex-end; gap:0.5rem;">
+          <div class="td-status-badge" id="td-status-badge">Active</div>
+          <div id="td-cycle-container" style="display:flex; flex-direction:column; align-items:flex-end; gap:0.5rem;"></div>
+        </div>
+      </div>
+
+      <!-- Payment Alert Banner -->
+      <div class="td-alert" id="td-alert" style="display:none">
+        <span class="td-alert-icon">⏳</span>
+        <div class="td-alert-text">
+          <strong id="td-alert-days">0 days</strong> have passed since this trip was registered without clearing the remaining payment.
+        </div>
+        <div class="td-day-counter" id="td-day-counter">0</div>
+      </div>
+
+      <!-- Fully Paid badge -->
+      <div class="td-paid-banner" id="td-paid-banner" style="display:none">
+        <span>✅</span> Payment fully settled — No balance pending.
+      </div>
+
+      <!-- Info grid -->
+      <div class="td-info-grid">
+
+        <!-- Route card -->
+        <div class="td-card td-card-route">
+          <h3 class="td-card-title">📍 Route Details</h3>
+          <div class="td-route-visual">
+            <div class="td-route-point">
+              <div class="td-rp-dot dot-from"></div>
+              <div class="td-rp-info">
+                <span class="td-rp-label">Pickup From</span>
+                <span class="td-rp-value" id="td-from">—</span>
+              </div>
+            </div>
+            <div class="td-route-line"></div>
+            <div class="td-route-point">
+              <div class="td-rp-dot dot-to"></div>
+              <div class="td-rp-info">
+                <span class="td-rp-label">Deliver To</span>
+                <span class="td-rp-value" id="td-to">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment card -->
+        <div class="td-card td-card-payment">
+          <h3 class="td-card-title">💰 Payment Breakdown</h3>
+          <div class="td-pay-rows">
+            <div class="td-pay-row">
+              <span class="td-pay-label">Total Amount Set</span>
+              <span class="td-pay-value" id="td-total">₹0</span>
+            </div>
+            <div class="td-pay-row" id="td-tds-row" style="display:none;">
+              <span class="td-pay-label" style="color:var(--danger)">TDS Deducted <span id="td-tds-percent"></span></span>
+              <span class="td-pay-value" id="td-tds-amount" style="color:var(--danger)">- ₹0</span>
+            </div>
+            <div class="td-pay-row" id="td-igst-row" style="display:none;">
+              <span class="td-pay-label" style="color:var(--accent)">IGST <span id="td-igst-percent"></span></span>
+              <span class="td-pay-value" id="td-igst-amount" style="color:var(--accent)">+ ₹0</span>
+            </div>
+            <div class="td-pay-row" id="td-cgst-row" style="display:none;">
+              <span class="td-pay-label" style="color:var(--accent)">CGST <span id="td-cgst-percent"></span></span>
+              <span class="td-pay-value" id="td-cgst-amount" style="color:var(--accent)">+ ₹0</span>
+            </div>
+            <div class="td-pay-row" id="td-sgst-row" style="display:none;">
+              <span class="td-pay-label" style="color:var(--accent)">SGST <span id="td-sgst-percent"></span></span>
+              <span class="td-pay-value" id="td-sgst-amount" style="color:var(--accent)">+ ₹0</span>
+            </div>
+            <div class="td-pay-row" id="td-net-row" style="display:none;">
+              <span class="td-pay-label" style="font-weight:700">Net Final Amount</span>
+              <span class="td-pay-value" id="td-net-total" style="font-weight:700">₹0</span>
+            </div>
+            <div class="td-pay-row">
+              <span class="td-pay-label">Advance Given</span>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="color:var(--text2)">₹</span>
+                <input type="number" id="td-edit-advance" oninput="liveUpdateAdvance()" style="background:var(--bg-input); border:1px solid var(--border); color:var(--heading); padding:0.25rem 0.5rem; border-radius:var(--r-sm); width:100px; text-align:right; font-size:1rem; outline:none;" value="0" min="0" />
+              </div>
+            </div>
+            <div class="td-pay-divider"></div>
+            <div class="td-pay-row td-pay-row-balance">
+              <span class="td-pay-label">Balance Remaining</span>
+              <span class="td-pay-value td-balance" id="td-balance">₹0</span>
+            </div>
+          </div>
+
+          <!-- Mark as paid button -->
+          <button class="btn-mark-paid" id="btn-mark-paid" onclick="markAsPaid()">
+            ✅ Mark Payment as Received
+          </button>
+
+        </div>
+
+        <!-- Expenses & Profit card (hidden by default) -->
+        <div class="td-card td-card-expenses" id="td-card-expenses" style="display:none; margin-top: 1.5rem;">
+          <h3 class="td-card-title">📈 Expenses & Profit Tracker</h3>
+          <div class="td-pay-rows">
+            <div class="td-pay-row">
+              <span class="td-pay-label">Fuel Expense</span>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="color:var(--text2)">₹</span>
+                <input type="number" id="td-edit-fuel" oninput="liveUpdateExpenses()" style="background:var(--bg-input); border:1px solid var(--border); color:var(--heading); padding:0.25rem 0.5rem; border-radius:var(--r-sm); width:90px; text-align:right; font-size:1rem; outline:none;" value="0" min="0" />
+              </div>
+            </div>
+            <div class="td-pay-row">
+              <span class="td-pay-label">Toll Expense</span>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="color:var(--text2)">₹</span>
+                <input type="number" id="td-edit-toll" oninput="liveUpdateExpenses()" style="background:var(--bg-input); border:1px solid var(--border); color:var(--heading); padding:0.25rem 0.5rem; border-radius:var(--r-sm); width:90px; text-align:right; font-size:1rem; outline:none;" value="0" min="0" />
+              </div>
+            </div>
+            <div class="td-pay-row">
+              <span class="td-pay-label">Driver Expense</span>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="color:var(--text2)">₹</span>
+                <input type="number" id="td-edit-driver" oninput="liveUpdateExpenses()" style="background:var(--bg-input); border:1px solid var(--border); color:var(--heading); padding:0.25rem 0.5rem; border-radius:var(--r-sm); width:90px; text-align:right; font-size:1rem; outline:none;" value="0" min="0" />
+              </div>
+            </div>
+            <div class="td-pay-divider"></div>
+            <div class="td-pay-row td-pay-row-balance">
+              <span class="td-pay-label">Total Expenses</span>
+              <span class="td-pay-value" id="td-exp-total" style="color: var(--danger)">₹0</span>
+            </div>
+            <div class="td-pay-divider"></div>
+            <div class="td-pay-row td-pay-row-balance" style="margin-top: 0.5rem; background: var(--bg); padding: 0.75rem; border-radius: 8px;">
+              <span class="td-pay-label" id="td-exp-profit-label" style="font-weight: 600; font-size: 1.1rem;">Net Profit / Loss</span>
+              <span class="td-pay-value" id="td-exp-profit" style="font-size: 1.3rem;">₹0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vehicle card -->
+        <div class="td-card td-card-vehicle">
+          <h3 class="td-card-title">🚛 Vehicle Info</h3>
+          <div class="td-veh-rows">
+            <div class="td-veh-row">
+              <span class="td-veh-label">Vehicle Number</span>
+              <span class="td-veh-value" id="td-veh-number">—</span>
+            </div>
+            <div class="td-veh-row">
+              <span class="td-veh-label">Owner Name</span>
+              <span class="td-veh-value" id="td-veh-owner">—</span>
+            </div>
+            <div class="td-veh-row">
+              <span class="td-veh-label">Vehicle Type</span>
+              <span class="td-veh-value" id="td-veh-type">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeline card -->
+        <div class="td-card td-card-timeline">
+          <h3 class="td-card-title">📅 Timeline</h3>
+          <div class="td-timeline">
+            <div class="td-tl-item">
+              <div class="td-tl-dot tl-dot-done"></div>
+              <div class="td-tl-info">
+                <span class="td-tl-event">Trip Registered</span>
+                <span class="td-tl-date" id="td-registered">—</span>
+              </div>
+            </div>
+            <div class="td-tl-item" id="tl-paid-item" style="display:none">
+              <div class="td-tl-dot tl-dot-done"></div>
+              <div class="td-tl-info">
+                <span class="td-tl-event">Payment Received</span>
+                <span class="td-tl-date" id="td-paid-date">—</span>
+              </div>
+            </div>
+            <div class="td-tl-item" id="tl-pending-item">
+              <div class="td-tl-dot tl-dot-pending"></div>
+              <div class="td-tl-info">
+                <span class="td-tl-event">Balance Payment Pending</span>
+                <span class="td-tl-date td-pending-counter" id="td-pending-since">0 days elapsed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end td-info-grid -->
+
+    </div><!-- end td-content -->
+  </div><!-- end td-page -->
+
+  <!-- ══════════════════════════════
+       EXPENSE WIZARD MODAL
+  ══════════════════════════════ -->
+  <div class="sub-modal-overlay" id="modal-expense-wizard" onclick="closeSubModalOnOverlay(event,'expense-wizard')">
+    <div class="sub-modal">
+      <button class="modal-close" onclick="closeSubModal('expense-wizard')">&times;</button>
+      <div class="sub-modal-header"><span>💰</span><h2>Mark Payment & Record Expenses</h2></div>
+      
+      <!-- Step 1: Fuel -->
+      <div id="expense-step-1">
+        <p class="modal-confirm-text"><strong>Step 1 of 4:</strong> How much amount was used for Fuel (Diesel/Petrol)?</p>
+        <div class="form-group" style="margin-top: 1rem;">
+          <label>Fuel Expense (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">⛽</span>
+            <input type="number" id="exp-fuel" placeholder="e.g. 5000" min="0" value="0">
+          </div>
+        </div>
+        <div class="confirm-actions" style="margin-top:1.5rem">
+          <button class="btn-confirm-register" onclick="nextExpenseStep(2)">Next ➡️</button>
+          <button class="btn-confirm-edit" onclick="closeSubModal('expense-wizard')">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Toll -->
+      <div id="expense-step-2" style="display:none">
+        <p class="modal-confirm-text"><strong>Step 2 of 4:</strong> How much was the Toll expense?</p>
+        <div class="form-group" style="margin-top: 1rem;">
+          <label>Toll Expense (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">🛣️</span>
+            <input type="number" id="exp-toll" placeholder="e.g. 1200" min="0" value="0">
+          </div>
+        </div>
+        <div class="confirm-actions" style="margin-top:1.5rem">
+          <button class="btn-confirm-register" onclick="nextExpenseStep(3)">Next ➡️</button>
+          <button class="btn-confirm-edit" onclick="prevExpenseStep(1)">⬅️ Back</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Driver -->
+      <div id="expense-step-3" style="display:none">
+        <p class="modal-confirm-text"><strong>Step 3 of 4:</strong> How much was the Driver expense?</p>
+        <div class="form-group" style="margin-top: 1rem;">
+          <label>Driver Expense (₹)</label>
+          <div class="input-wrap">
+            <span class="input-icon">👨‍✈️</span>
+            <input type="number" id="exp-driver" placeholder="e.g. 2000" min="0" value="0">
+          </div>
+        </div>
+        <div class="confirm-actions" style="margin-top:1.5rem">
+          <button class="btn-confirm-register" onclick="nextExpenseStep(4)">Next ➡️</button>
+          <button class="btn-confirm-edit" onclick="prevExpenseStep(2)">⬅️ Back</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Confirm -->
+      <div id="expense-step-4" style="display:none">
+        <p class="modal-confirm-text"><strong>Step 4 of 4:</strong> Confirm Payment & Expenses Summary</p>
+        <div class="pay-confirm-summary" id="pay-confirm-summary">
+          <!-- populated by JS -->
+        </div>
+        <div class="confirm-actions" style="margin-top:1.5rem">
+          <button class="btn-confirm-register" id="btn-confirm-payment" onclick="executePaidConfirm()">✅ Confirm & Save Trip</button>
+          <button class="btn-confirm-edit" onclick="prevExpenseStep(3)">⬅️ Back</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Custom Confirm Modal -->
+  <div class="confirm-overlay" id="custom-confirm-overlay">
+    <div class="confirm-box">
+      <div class="cb-icon">❓</div>
+      <h3 class="cb-title">Please Confirm</h3>
+      <p class="cb-message" id="custom-confirm-message">Are you sure?</p>
+      <div class="cb-actions">
+        <button class="cb-btn cb-btn-cancel" id="custom-confirm-cancel">Cancel</button>
+        <button class="cb-btn cb-btn-ok" id="custom-confirm-ok">Yes, Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toast-icon">✅</span>
+    <span class="toast-msg"  id="toast-msg">Success!</span>
+  </div>
+
+
+  <script src="trip-detail.js"></script>
+</body>
+</html>

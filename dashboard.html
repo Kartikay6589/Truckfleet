@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — TruckFleet Pro</title>
+  <script src="site-config.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="custom-select.css" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+
+  <div class="cursor-circle" id="cursor-circle"></div>
+  <div class="cursor-dot"    id="cursor-dot"></div>
+  <div class="theme-ripple"  id="theme-ripple"></div>
+  <div class="theme-flash"   id="theme-flash"></div>
+
+  <!-- ══════════════════════════════
+       HAMBURGER SIDE MENU
+  ══════════════════════════════ -->
+  <div class="sidemenu-overlay" id="sidemenu-overlay" onclick="closeSideMenu()"></div>
+  <aside class="sidemenu" id="sidemenu">
+    <div class="sidemenu-header">
+      <div class="sidemenu-avatar" id="sidemenu-avatar">R</div>
+      <div class="sidemenu-userinfo">
+        <span class="sidemenu-name" id="sidemenu-name">Rajesh Kumar</span>
+        <span class="sidemenu-role" id="sidemenu-role">Fleet Owner</span>
+      </div>
+    </div>
+    <div class="sidemenu-divider"></div>
+    <nav class="sidemenu-nav">
+      <button class="sidemenu-item" onclick="openSubModal('account-details')">
+        <span class="sm-icon">👤</span><span>Account Details</span>
+      </button>
+      <button class="sidemenu-item" onclick="openSubModal('change-role')">
+        <span class="sm-icon">🏷️</span><span>Change Role</span>
+      </button>
+      <button class="sidemenu-item" id="sm-theme-btn" onclick="toggleThemeFromMenu()">
+        <span class="sm-icon" id="sm-theme-icon">🌙</span>
+        <span id="sm-theme-label">Switch to Light Mode</span>
+      </button>
+      <button class="sidemenu-item" onclick="openSubModal('appearance')">
+        <span class="sm-icon">🎨</span><span>Appearance</span>
+      </button>
+      <button class="sidemenu-item" onclick="openSubModal('change-password')">
+        <span class="sm-icon">🔑</span><span>Change Password</span>
+      </button>
+      <button class="sidemenu-item" onclick="openSubModal('notifications')">
+        <span class="sm-icon">🔔</span><span>Notifications</span>
+        <span class="sm-badge" id="notif-badge" style="display:none">0</span>
+      </button>
+      <button class="sidemenu-item" onclick="openSubModal('help')">
+        <span class="sm-icon">❓</span><span>Help &amp; Support</span>
+      </button>
+      <button class="sidemenu-item sidemenu-item-danger" onclick="openSubModal('delete-account')">
+        <span class="sm-icon">⚠️</span><span>Request Account Deletion</span>
+      </button>
+    </nav>
+    <div class="sidemenu-divider"></div>
+    <button class="sidemenu-item sidemenu-logout" onclick="handleLogout()">
+      <span class="sm-icon">🚪</span><span>Logout</span>
+    </button>
+  </aside>
+
+  <!-- ══════════════════════════════
+       TOP BAR
+  ══════════════════════════════ -->
+  <header class="topbar" id="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSideMenu()" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+      <a href="index.html" class="topbar-logo">
+        <span class="logo-icon">🚛</span>
+        <span class="logo-text">Truck<span class="logo-accent">Fleet</span> Pro</span>
+      </a>
+    </div>
+    <div class="topbar-right">
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════
+       APP LAYOUT
+  ══════════════════════════════ -->
+  <div class="app-layout">
+
+    <!-- ── Icon-only Left Nav (hover to expand) ── -->
+    <aside class="left-nav" id="left-nav">
+      <div class="nav-inner" id="nav-inner">
+        <nav class="left-nav-links">
+          <button class="left-nav-item active" id="nav-dashboard" onclick="switchView('dashboard')" title="Dashboard">
+            <span class="lni-icon">🏠</span>
+            <span class="lni-label">Dashboard</span>
+          </button>
+          <button class="left-nav-item" id="nav-vehicles" onclick="switchView('vehicles')" title="My Vehicles">
+            <span class="lni-icon">🚛</span>
+            <span class="lni-label">Vehicles</span>
+          </button>
+          <button class="left-nav-item" id="nav-drivers" onclick="switchView('drivers')" title="My Drivers">
+            <span class="lni-icon">🧑‍✈️</span>
+            <span class="lni-label">Drivers</span>
+          </button>
+          <button class="left-nav-item" id="nav-salary" onclick="switchView('salary')" title="Driver Salary">
+            <span class="lni-icon">💰</span>
+            <span class="lni-label">Salary</span>
+          </button>
+          <button class="left-nav-item" id="nav-trips" onclick="switchView('trips')" title="Trip Registration">
+            <span class="lni-icon">🗺️</span>
+            <span class="lni-label">Trip Registration</span>
+          </button>
+          <button class="left-nav-item" id="nav-broker" onclick="switchView('broker')" title="Brokered Trips">
+            <span class="lni-icon">🤝</span>
+            <span class="lni-label">Brokered Trips</span>
+          </button>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- ── Main Content ── -->
+    <main class="dash-main" id="dash-main">
+
+      <!-- ══════════════════════════════
+           VIEW 1 — DASHBOARD HOME
+      ══════════════════════════════ -->
+      <div class="view" id="view-dashboard">
+        <div class="view-header">
+          <h1 class="view-greeting" id="dash-greeting">Good Morning, Rajesh! 👋</h1>
+          <p class="view-date" id="dash-date"></p>
+        </div>
+
+        <!-- 4 overview cards: Name, Vehicles, Trips, Role -->
+        <div class="overview-cards">
+          <div class="ov-card ov-card-blue">
+            <div class="ov-card-icon">👤</div>
+            <div class="ov-card-info">
+              <span class="ov-card-label">Account Name</span>
+              <span class="ov-card-value" id="ov-name">—</span>
+            </div>
+            <div class="ov-card-glow"></div>
+          </div>
+          <div class="ov-card ov-card-orange" style="cursor:pointer" onclick="switchView('vehicles')">
+            <div class="ov-card-icon">🚛</div>
+            <div class="ov-card-info">
+              <span class="ov-card-label">Vehicles Registered</span>
+              <span class="ov-card-value ov-big" id="ov-trucks">0</span>
+            </div>
+            <div class="ov-card-hint">Manage →</div>
+            <div class="ov-card-glow"></div>
+          </div>
+          <div class="ov-card ov-card-green" style="cursor:pointer" onclick="switchView('trips')">
+            <div class="ov-card-icon">🗺️</div>
+            <div class="ov-card-info">
+              <span class="ov-card-label">Trips Registered</span>
+              <span class="ov-card-value ov-big" id="ov-trips">0</span>
+            </div>
+            <div class="ov-card-hint">Manage →</div>
+            <div class="ov-card-glow"></div>
+          </div>
+          <div class="ov-card ov-card-purple" style="cursor:pointer" onclick="openSubModal('change-role')">
+            <div class="ov-card-icon">🏷️</div>
+            <div class="ov-card-info">
+              <span class="ov-card-label">Your Role</span>
+              <span class="ov-card-value" id="ov-role">Fleet Owner</span>
+            </div>
+            <div class="ov-card-hint">Change →</div>
+            <div class="ov-card-glow"></div>
+          </div>
+          <div class="ov-card ov-card-teal" style="cursor:pointer" onclick="switchView('broker')">
+            <div class="ov-card-icon">🤝</div>
+            <div class="ov-card-info">
+              <span class="ov-card-label">Brokered Trips</span>
+              <span class="ov-card-value ov-big" id="ov-broker">0</span>
+            </div>
+            <div class="ov-card-hint">Manage →</div>
+            <div class="ov-card-glow"></div>
+          </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="quick-section">
+          <h2 class="qs-title">⚡ Quick Actions</h2>
+          <div class="quick-actions">
+            <button class="qa-card" onclick="switchView('vehicles')">
+              <span class="qa-icon">➕</span>
+              <span class="qa-label">Add Vehicle</span>
+            </button>
+            <button class="qa-card" onclick="switchView('trips'); setTimeout(startTripWizard,200)">
+              <span class="qa-icon">🗺️</span>
+              <span class="qa-label">Register Trip</span>
+            </button>
+            <button class="qa-card" onclick="openSubModal('account-details')">
+              <span class="qa-icon">👤</span>
+              <span class="qa-label">Account Details</span>
+            </button>
+            <button class="qa-card" onclick="openSubModal('change-role')">
+              <span class="qa-icon">🏷️</span>
+              <span class="qa-label">Change Role</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════
+           VIEW 2 — MY VEHICLES
+      ══════════════════════════════ -->
+      <div class="view hidden" id="view-vehicles">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">🚛 My Vehicles</h1>
+            <p class="view-subtitle">Manage all your registered vehicles</p>
+          </div>
+          <button class="btn-primary-action" id="btn-show-add-vehicle" onclick="toggleAddVehicleForm()">
+            ➕ Add Vehicle
+          </button>
+        </div>
+
+        <!-- Add Vehicle Form -->
+        <div class="add-vehicle-panel" id="add-vehicle-panel" style="display:none">
+          <div class="avp-header">
+            <h3>Register a New Vehicle</h3>
+            <button class="avp-close" onclick="toggleAddVehicleForm()">✕</button>
+          </div>
+          <div class="form-error" id="veh-error"></div>
+          <form id="form-add-vehicle" onsubmit="handleAddVehicle(event)">
+            <div class="avp-fields">
+              <div class="avp-field">
+                <label for="veh-number">🔢 Vehicle Number</label>
+                <input type="text" id="veh-number" placeholder="e.g. HR38X1234" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" required />
+              </div>
+              <div class="avp-field">
+                <label for="veh-owner">👤 Owner Name</label>
+                <input type="text" id="veh-owner" placeholder="e.g. Rajesh Kumar" required />
+              </div>
+              <div class="avp-field">
+                <label for="veh-type">🚛 Vehicle Type</label>
+                <select id="veh-type" required onchange="handleVehTypeChange(this.value)">
+                  <option value="" disabled selected>Select type</option>
+                  <option>Mini Truck</option>
+                  <option>Open Truck</option>
+                  <option>Container Truck</option>
+                  <option>Tanker</option>
+                  <option>Trailer</option>
+                  <option>Tipper / Dumper</option>
+                  <option>Refrigerated Truck</option>
+                  <option>Flatbed Truck</option>
+                </select>
+              </div>
+              <div class="avp-field">
+                <label for="veh-driver">🧑‍✈️ Driver Name</label>
+                <input type="text" id="veh-driver" placeholder="e.g. Ramesh Singh" required />
+              </div>
+              <div class="avp-field" id="container-type-field" style="display:none; animation: slideIn 0.3s ease;">
+                <label>📦 Container Type</label>
+                <div class="veh-subtype-btns">
+                  <button type="button" class="veh-sub-btn" id="veh-btn-SXL" onclick="selectContainerType('SXL')">SXL</button>
+                  <button type="button" class="veh-sub-btn" id="veh-btn-MXL" onclick="selectContainerType('MXL')">MXL</button>
+                </div>
+                <input type="hidden" id="veh-container-type" value="" />
+              </div>
+              <div class="avp-field" id="container-size-field" style="display:none; animation: slideIn 0.3s ease;">
+                <label>📏 Size & Capacity</label>
+                <div class="veh-subtype-btns" id="container-size-btns">
+                  <!-- Rendered dynamically -->
+                </div>
+                <input type="hidden" id="veh-container-size" value="" />
+              </div>
+            </div>
+            <button type="submit" class="btn-submit-vehicle">➕ Add Vehicle</button>
+          </form>
+        </div>
+
+        <!-- Vehicles Table -->
+        <div class="vehicles-table-wrap">
+          <div class="vtw-toolbar">
+            <span class="vtw-count" id="vtw-count">0 vehicles registered</span>
+          </div>
+          <table class="data-table" id="vehicles-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Vehicle Number</th>
+                <th>Owner Name</th>
+                <th>Driver Name</th>
+                <th>Vehicle Type</th>
+                <th>Registered On</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="vehicles-tbody">
+              <tr class="empty-row"><td colspan="7">No vehicles yet. Click "Add Vehicle" to get started.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════
+           VIEW 2.5 — MY DRIVERS
+      ══════════════════════════════ -->
+      <div class="view hidden" id="view-drivers">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">🧑‍✈️ My Drivers</h1>
+            <p class="view-subtitle">Manage all your registered drivers</p>
+          </div>
+          <button class="btn-primary-action" id="btn-show-add-driver" onclick="toggleAddDriverForm()">
+            ➕ Add Driver
+          </button>
+        </div>
+
+        <!-- Add Driver Form -->
+        <div class="add-vehicle-panel" id="add-driver-panel" style="display:none">
+          <div class="avp-header">
+            <h3>Register a New Driver</h3>
+            <button class="avp-close" onclick="toggleAddDriverForm()">✕</button>
+          </div>
+          <div class="form-error" id="drv-error"></div>
+          <form id="form-add-driver" onsubmit="handleAddDriver(event)">
+            <div class="avp-fields">
+              <div class="avp-field">
+                <label for="drv-name">👤 Driver Name</label>
+                <input type="text" id="drv-name" placeholder="e.g. Ramesh Singh" required />
+              </div>
+              <div class="avp-field">
+                <label for="drv-license">🪪 Driving License</label>
+                <input type="text" id="drv-license" placeholder="e.g. HR06201100" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" required />
+              </div>
+            </div>
+            <button type="submit" class="btn-submit-vehicle">➕ Add Driver</button>
+          </form>
+        </div>
+
+        <!-- Drivers Table -->
+        <div class="vehicles-table-wrap">
+          <div class="vtw-toolbar">
+            <span class="vtw-count" id="dtw-count">0 drivers registered</span>
+          </div>
+          <table class="data-table" id="drivers-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Driver Name</th>
+                <th>Driving License</th>
+                <th>Added On</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="drivers-tbody">
+              <!-- Driver rows populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════
+           VIEW 3 — TRIP REGISTRATION
+      ══════════════════════════════ -->
+      <div class="view hidden" id="view-trips">
+
+        <!-- Trip Home (list + button) -->
+        <div id="trip-home">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">🗺️ Trip Registration</h1>
+              <p class="view-subtitle">Register and track all your delivery trips</p>
+            </div>
+            <button class="btn-primary-action" onclick="startTripWizard()">➕ Add New Trip</button>
+          </div>
+          <div class="trips-list-section">
+            <div class="tls-toolbar">
+              <span class="tls-count" id="tls-count">0 trips registered</span>
+            </div>
+            <div id="trips-list-container">
+              <div class="empty-state" id="trips-empty-state">
+                <div class="es-icon">🗺️</div>
+                <h3>No trips registered yet</h3>
+                <p>Click "Add New Trip" to register your first delivery trip.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trip Wizard -->
+        <div id="trip-wizard" style="display:none">
+          <div class="wizard-progress">
+            <button class="wizard-back" id="wizard-back-btn" onclick="wizardBack()">← Back</button>
+            <div class="wizard-steps">
+              <div class="wizard-step" id="ws-1">1</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="ws-2">2</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="ws-3">3</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="ws-4">4</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="ws-5">5</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="ws-6">6</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="ws-7">7</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="ws-8">✓</div>
+            </div>
+            <button class="wizard-cancel" onclick="cancelWizard()">✕ Cancel</button>
+          </div>
+
+          <!-- Step 1: Vehicle -->
+          <div class="wizard-page" id="wp-1">
+            <div class="wizard-page-content">
+              <div class="wp-icon">🚛</div>
+              <h2 class="wp-title">Select a Vehicle</h2>
+              <p class="wp-desc">Choose which truck will be used for this trip.</p>
+              <div class="vehicle-selector" id="vehicle-selector"></div>
+              <div class="wp-error" id="wp1-error"></div>
+              <button class="btn-wizard-next" onclick="wizardNext(1)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- Step 2: From -->
+          <div class="wizard-page hidden" id="wp-2">
+            <div class="wizard-page-content">
+              <div class="wp-icon">📍</div>
+              <h2 class="wp-title">Pickup Location</h2>
+              <p class="wp-desc">Where will the goods be picked up from?</p>
+              <div class="wp-input-wrap">
+                <input type="text" id="trip-from" class="wp-input" placeholder="e.g. Delhi Warehouse, Sector 62" />
+              </div>
+              <div class="wp-error" id="wp2-error"></div>
+              <button class="btn-wizard-next" onclick="wizardNext(2)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- Step 3: To -->
+          <div class="wizard-page hidden" id="wp-3">
+            <div class="wizard-page-content">
+              <div class="wp-icon">🏁</div>
+              <h2 class="wp-title">Delivery Location</h2>
+              <p class="wp-desc">Where should the goods be delivered?</p>
+              <div class="wp-input-wrap">
+                <input type="text" id="trip-to" class="wp-input" placeholder="e.g. Mumbai JNPT Port" />
+              </div>
+              <div class="wp-error" id="wp3-error"></div>
+              <button class="btn-wizard-next" onclick="wizardNext(3)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- Step 4: Total amount -->
+          <div class="wizard-page hidden" id="wp-4">
+            <div class="wizard-page-content">
+              <div class="wp-icon">💰</div>
+              <h2 class="wp-title">Total Delivery Amount</h2>
+              <p class="wp-desc">What is the total agreed amount for this delivery?</p>
+              <div class="wp-input-wrap wp-input-prefix">
+                <span class="wp-prefix">₹</span>
+                <input type="number" id="trip-total" class="wp-input" placeholder="e.g. 25000" min="1" />
+              </div>
+              <div class="wp-error" id="wp4-error"></div>
+              <button class="btn-wizard-next" onclick="wizardNext(4)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- Step 5: Advance -->
+          <div class="wizard-page hidden" id="wp-5">
+            <div class="wizard-page-content">
+              <div class="wp-icon">🏦</div>
+              <h2 class="wp-title">Advance Given</h2>
+              <p class="wp-desc">How much advance has been paid to the owner upfront?</p>
+              <div class="wp-input-wrap wp-input-prefix">
+                <span class="wp-prefix">₹</span>
+                <input type="number" id="trip-advance" class="wp-input" placeholder="e.g. 10000" min="0" />
+              </div>
+              <div class="wp-hint">Enter 0 if no advance was given.</div>
+              <div class="wp-error" id="wp5-error"></div>
+              <button class="btn-wizard-next" onclick="wizardNext(5)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- Step 6: TDS -->
+          <div class="wizard-page hidden" id="wp-6">
+            <div class="wizard-page-content">
+              <div class="wp-icon">✂️</div>
+              <h2 class="wp-title">TDS Deduction</h2>
+              <p class="wp-desc">Select the TDS percentage to deduct from the Total Amount.</p>
+              
+              <div class="tds-selector">
+                <button class="tds-btn active" id="tds-btn-0" onclick="selectTds(0)">None (0%)</button>
+                <button class="tds-btn" id="tds-btn-1" onclick="selectTds(1)">1% TDS</button>
+                <button class="tds-btn" id="tds-btn-2" onclick="selectTds(2)">2% TDS</button>
+              </div>
+              
+              <input type="hidden" id="trip-tds-val" value="0" />
+
+              <div class="wp-error" id="wp6-error"></div>
+              <button class="btn-wizard-next" style="margin-top: 1.5rem;" onclick="wizardNext(6)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- Step 7: GST -->
+          <div class="wizard-page hidden" id="wp-7">
+            <div class="wizard-page-content">
+              <div class="wp-icon">📄</div>
+              <h2 class="wp-title">GST Selection</h2>
+              <p class="wp-desc">Select the applicable GST type and rate.</p>
+              
+              <div class="gst-selector">
+                <button class="gst-btn active" id="gst-type-NILL" onclick="selectGstType('NILL')">NILL</button>
+                <button class="gst-btn" id="gst-type-IGST" onclick="selectGstType('IGST')">IGST</button>
+                <button class="gst-btn" id="gst-type-CSGST" onclick="selectGstType('CSGST')">CGST + SGST</button>
+              </div>
+
+              <div class="gst-rate-selector" id="gst-rate-selector" style="display:none; margin-top:1rem;">
+                <p class="wp-desc" style="margin-bottom:0.5rem; font-size:0.9rem;">Select GST Rate:</p>
+                <div style="display:flex; gap:0.5rem; justify-content:center;">
+                  <button class="gst-rate-btn active" id="gst-rate-5" onclick="selectGstRate(5)">5%</button>
+                  <button class="gst-rate-btn" id="gst-rate-12" onclick="selectGstRate(12)">12%</button>
+                  <button class="gst-rate-btn" id="gst-rate-18" onclick="selectGstRate(18)">18%</button>
+                </div>
+              </div>
+              
+              <input type="hidden" id="trip-gst-type" value="NILL" />
+              <input type="hidden" id="trip-gst-rate" value="0" />
+
+              <div class="wp-error" id="wp7-error"></div>
+              <button class="btn-wizard-next" style="margin-top: 1.5rem;" onclick="wizardNext(7)">Review Trip →</button>
+            </div>
+          </div>
+
+          <!-- Step 8: Confirm -->
+          <div class="wizard-page hidden" id="wp-8">
+            <div class="wizard-page-content">
+              <div class="wp-icon">📋</div>
+              <h2 class="wp-title">Confirm Trip Details</h2>
+              <p class="wp-desc">Review everything before registering this trip.</p>
+              <div class="confirm-card" id="confirm-card"></div>
+              <div class="confirm-actions">
+                <button class="btn-confirm-register" onclick="confirmTrip()">✅ Register Trip</button>
+                <button class="btn-confirm-edit" onclick="wizardBack()">✏️ Edit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════
+           VIEW 4 — BROKERED TRIPS
+      ══════════════════════════════ -->
+      <div class="view hidden" id="view-broker">
+        
+        <!-- Broker Home -->
+        <div id="broker-home">
+          <div class="view-header">
+            <div>
+              <h1 class="view-title">🤝 Brokered Trips</h1>
+              <p class="view-subtitle">Manage third-party marketplace trips and track profits</p>
+            </div>
+            <button class="btn-primary-action" onclick="startBrokerWizard()">➕ Add Brokered Trip</button>
+          </div>
+          <div class="trips-list-section">
+            <div class="tls-toolbar">
+              <span class="tls-count" id="bls-count">0 brokered trips</span>
+            </div>
+            <div id="broker-list-container">
+              <div class="empty-state" id="broker-empty-state">
+                <div class="es-icon">🤝</div>
+                <h3>No brokered trips yet</h3>
+                <p>Click "Add Brokered Trip" to act as a middleman for a delivery.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Broker Wizard -->
+        <div id="broker-wizard" style="display:none">
+          <div class="wizard-progress">
+            <button class="wizard-back" id="bwizard-back-btn" onclick="bwizardBack()">← Back</button>
+            <div class="wizard-steps">
+              <div class="wizard-step" id="bws-1">1</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="bws-2">2</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="bws-3">3</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="bws-4">✓</div>
+            </div>
+            <button class="wizard-cancel" onclick="cancelBrokerWizard()">✕ Cancel</button>
+          </div>
+
+          <div class="wizard-page" id="bw-step-1">
+            <div class="wizard-page-content">
+              <div class="wp-icon">🏢</div>
+              <h2 class="wp-title">Party Details</h2>
+              <p class="wp-desc">Enter the details of the company and the external truck owner.</p>
+              
+              <div class="wp-input-wrap">
+                <input type="text" id="broker-company" class="wp-input" placeholder="Company Name (e.g. Acme Corp)" />
+              </div>
+              <div class="wp-input-wrap">
+                <input type="text" id="broker-owner" class="wp-input" placeholder="Truck Owner Name (e.g. Suresh Singh)" />
+              </div>
+              <div class="wp-input-wrap">
+                <input type="text" id="broker-vehicle" class="wp-input" placeholder="Vehicle Number (e.g. HR38X1234)" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" />
+              </div>
+
+              <div class="wp-error" id="bwp1-error"></div>
+              <button class="btn-wizard-next" onclick="bwizardNext(1)">Continue →</button>
+            </div>
+          </div>
+
+          <div class="wizard-page hidden" id="bw-step-2">
+            <div class="wizard-page-content">
+              <div class="wp-icon">📍</div>
+              <h2 class="wp-title">Route Details</h2>
+              <p class="wp-desc">Where is the load going?</p>
+              
+              <div class="wp-input-wrap">
+                <input type="text" id="broker-from" class="wp-input" placeholder="Pickup Location (e.g. Mumbai)" />
+              </div>
+              <div class="wp-input-wrap">
+                <input type="text" id="broker-to" class="wp-input" placeholder="Drop Location (e.g. Delhi)" />
+              </div>
+
+              <div class="wp-error" id="bwp2-error"></div>
+              <button class="btn-wizard-next" onclick="bwizardNext(2)">Continue →</button>
+            </div>
+          </div>
+
+          <div class="wizard-page hidden" id="bw-step-3">
+            <div class="wizard-page-content">
+              <div class="wp-icon">💸</div>
+              <h2 class="wp-title">Financials</h2>
+              <p class="wp-desc">Enter the purchase and sell amounts to calculate profit.</p>
+              
+              <div class="wp-input-wrap">
+                <input type="number" id="broker-purchase" class="wp-input" placeholder="Purchase Amount (Cost) ₹" min="0" />
+              </div>
+              <div class="wp-input-wrap">
+                <input type="number" id="broker-sell" class="wp-input" placeholder="Sell Amount (Revenue) ₹" min="0" />
+              </div>
+
+              <div class="wp-error" id="bwp3-error"></div>
+              <button class="btn-wizard-next" onclick="bwizardNext(3)">View Overview →</button>
+            </div>
+          </div>
+
+          <div class="wizard-page hidden" id="bw-step-4">
+            <div class="wizard-page-content" style="max-width:640px;">
+              <div class="wp-icon">✅</div>
+              <h2 class="wp-title">Review & Confirm</h2>
+              <p class="wp-desc">Review the brokered trip details before registering.</p>
+              
+              <div class="confirm-card" id="broker-confirm-card" style="text-align:left; margin-bottom:2rem;">
+                <!-- Built dynamically -->
+              </div>
+              
+              <div class="confirm-actions" style="display:flex; justify-content:center; gap:1rem;">
+                <button class="btn-confirm-register" onclick="confirmBrokerTrip()">✅ Register Brokered Trip</button>
+                <button class="btn-confirm-edit" onclick="bwizardBack()">✏️ Edit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════
+           VIEW 6 — SALARY
+      ══════════════════════════════ -->
+      <div class="view hidden" id="view-salary">
+        <div class="view-header">
+          <h1 class="view-title">💰 Driver Salary</h1>
+          <p class="view-subtitle" id="salary-subtitle">Search for a driver to manage their monthly salary</p>
+        </div>
+
+        <div class="salary-subtabs">
+          <button class="salary-tab-btn active" id="stab-assign" onclick="switchSalaryTab('assign')">Assign Salary</button>
+          <button class="salary-tab-btn" id="stab-status" onclick="switchSalaryTab('status')">Check Status</button>
+        </div>
+
+        <div id="salary-assign-section" class="salary-section">
+          <div class="salary-search-container">
+            <div class="salary-search-wrapper">
+              <div class="salary-search-box">
+                <span class="ss-icon">🔍</span>
+                <input type="text" id="salary-search-input" placeholder="Enter driver name..." oninput="handleSalaryInput(this.value)" autocomplete="off">
+                <button class="ss-btn" onclick="executeSalarySearch()">Search</button>
+              </div>
+              <div class="salary-autocomplete" id="salary-autocomplete" style="display:none"></div>
+            </div>
+          </div>
+
+          <div class="salary-results-container" id="salary-results-container">
+            <!-- Results will be injected here -->
+          </div>
+        </div>
+
+        <div id="salary-status-section" class="salary-section" style="display:none;">
+          <div class="salary-status-container" id="salary-status-container">
+            <!-- Status cards will be injected here -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════════════════════════
+       SUB-MODALS
+  ══════════════════════════════ -->
+
+  <!-- Account Details -->
+  <div class="sub-modal-overlay" id="modal-account-details" onclick="closeSubModalOnOverlay(event,'account-details')">
+    <div class="sub-modal">
+      <button class="modal-close" onclick="closeSubModal('account-details')">&times;</button>
+      <div class="sub-modal-header"><span>👤</span><h2>Account Details</h2></div>
+      <div class="account-details-grid" id="account-details-grid"></div>
+      <button class="btn-primary-full" style="margin-top:1.25rem" onclick="closeSubModal('account-details');openSubModal('change-role')">
+        🏷️ Change Role
+      </button>
+    </div>
+  </div>
+
+  <!-- Change Role -->
+  <div class="sub-modal-overlay" id="modal-change-role" onclick="closeSubModalOnOverlay(event,'change-role')">
+    <div class="sub-modal">
+      <button class="modal-close" onclick="closeSubModal('change-role')">&times;</button>
+      <div class="sub-modal-header"><span>🏷️</span><h2>Change Role</h2></div>
+      <p class="modal-confirm-text">Select your role. Only the role field will be updated.</p>
+      <div class="role-option-list" id="role-option-list">
+        <button class="role-option-btn" id="role-fleet-owner" onclick="selectRole('fleet-owner')">
+          <span class="role-opt-icon">🚛</span>
+          <div class="role-opt-info">
+            <span class="role-opt-name">Fleet Owner / Truck Owner</span>
+            <span class="role-opt-desc">You own trucks and take delivery contracts</span>
+          </div>
+          <span class="role-opt-check" id="rc-fleet-owner"></span>
+        </button>
+        <button class="role-option-btn" id="role-company" onclick="selectRole('company')">
+          <span class="role-opt-icon">🏢</span>
+          <div class="role-opt-info">
+            <span class="role-opt-name">Company</span>
+            <span class="role-opt-desc">You hire trucks to move your goods</span>
+          </div>
+          <span class="role-opt-check" id="rc-company"></span>
+        </button>
+        <button class="role-option-btn" id="role-driver" onclick="selectRole('driver')">
+          <span class="role-opt-icon">👨‍✈️</span>
+          <div class="role-opt-info">
+            <span class="role-opt-name">Truck Driver</span>
+            <span class="role-opt-desc">You drive trucks for fleet owners</span>
+          </div>
+          <span class="role-opt-check" id="rc-driver"></span>
+        </button>
+      </div>
+      <button class="btn-primary-full" onclick="saveRole()" style="margin-top:1.25rem">💾 Save Role</button>
+    </div>
+  </div>
+
+  <!-- Appearance -->
+  <div class="sub-modal-overlay" id="modal-appearance" onclick="closeSubModalOnOverlay(event,'appearance')">
+    <div class="sub-modal">
+      <button class="modal-close" onclick="closeSubModal('appearance')">&times;</button>
+      <div class="sub-modal-header"><span>🎨</span><h2>Appearance</h2></div>
+
+      <p class="modal-confirm-text">Accent Color</p>
+      <div id="appearance-accent-swatches" style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1.5rem;"></div>
+
+      <div class="appearance-toggle-row">
+        <div>
+          <strong>Dark Mode</strong>
+          <p class="appearance-toggle-desc">Switch between light and dark theme</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="appearance-theme-toggle" onchange="setPrefTheme(this.checked)">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="appearance-toggle-row">
+        <div>
+          <strong>Custom Cursor</strong>
+          <p class="appearance-toggle-desc">The glowing circle that follows your mouse</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="appearance-cursor-toggle" onchange="TFPPrefs.set({customCursor:this.checked})">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="appearance-toggle-row">
+        <div>
+          <strong>Animations</strong>
+          <p class="appearance-toggle-desc">Transitions, ripples and hover effects</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="appearance-anim-toggle" onchange="TFPPrefs.set({animations:this.checked})">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <p class="modal-confirm-text" style="margin-top:1.25rem;">Text Size</p>
+      <div class="appearance-font-row" id="appearance-font-row">
+        <button type="button" data-scale="0.9">A-</button>
+        <button type="button" data-scale="1">A</button>
+        <button type="button" data-scale="1.1">A+</button>
+        <button type="button" data-scale="1.2">A++</button>
+      </div>
+
+      <button class="btn-primary-full" style="margin-top:1.5rem" onclick="resetAppearance()">↺ Reset to Defaults</button>
+    </div>
+  </div>
+
+  <!-- Change Password -->
+  <div class="sub-modal-overlay" id="modal-change-password" onclick="closeSubModalOnOverlay(event,'change-password')">
+    <div class="sub-modal">
+      <button class="modal-close" onclick="closeSubModal('change-password')">&times;</button>
+      <div class="sub-modal-header"><span>🔑</span><h2>Change Password</h2></div>
+      <div class="form-error" id="pw-error"></div>
+      <div class="pw-success" id="pw-success" style="display:none">✅ Password updated!</div>
+      <form class="modal-form" id="form-change-password" onsubmit="handleChangePassword(event)">
+        <div class="form-group">
+          <label for="pw-current">Current Password</label>
+          <div class="input-wrap"><span class="input-icon">🔒</span>
+            <input type="password" id="pw-current" placeholder="Current password" required /></div>
+        </div>
+        <div class="form-group">
+          <label for="pw-new">New Password</label>
+          <div class="input-wrap"><span class="input-icon">🆕</span>
+            <input type="password" id="pw-new" placeholder="Min 10 characters, 1 uppercase" required minlength="10" /></div>
+        </div>
+        <div class="form-group">
+          <label for="pw-confirm">Confirm Password</label>
+          <div class="input-wrap"><span class="input-icon">✅</span>
+            <input type="password" id="pw-confirm" placeholder="Re-enter new password" required minlength="10" /></div>
+        </div>
+        <button type="submit" class="btn-primary-full" style="margin-top:1.25rem">Update Password</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Salary Entry Modal -->
+  <div class="sub-modal-overlay" id="modal-salary" onclick="closeSubModalOnOverlay(event,'salary')">
+    <div class="sub-modal">
+      <button class="modal-close" onclick="closeSubModal('salary')">&times;</button>
+      <div class="sub-modal-header"><span>💰</span><h2>Enter Salary</h2></div>
+      <p class="modal-confirm-text" id="salary-driver-name">Driver: --</p>
+      <form class="modal-form" id="form-salary" onsubmit="handleSaveSalary(event)">
+        <input type="hidden" id="salary-driver-id">
+        <div class="form-group">
+          <label for="salary-amount">Salary Amount (₹)</label>
+          <div class="input-wrap"><span class="input-icon">₹</span>
+            <input type="number" id="salary-amount" placeholder="e.g. 25000" required min="0" /></div>
+        </div>
+        <button type="submit" class="btn-primary-full" style="margin-top:1.25rem">💾 Save Salary</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="sub-modal-overlay" id="modal-notifications" onclick="closeSubModalOnOverlay(event,'notifications')">
+    <div class="sub-modal">
+      <button class="modal-close" onclick="closeSubModal('notifications')">&times;</button>
+      <div class="sub-modal-header"><span>🔔</span><h2>Notifications</h2></div>
+      <div class="notif-list" id="notif-list"></div>
+    </div>
+  </div>
+
+  <!-- Help -->
+  <div class="sub-modal-overlay" id="modal-help" onclick="closeSubModalOnOverlay(event,'help')">
+    <div class="sub-modal">
+      <button class="modal-close" onclick="closeSubModal('help')">&times;</button>
+      <div class="sub-modal-header"><span>❓</span><h2>Help &amp; Support</h2></div>
+      <div class="help-content">
+        <div class="help-item"><strong>🚛 Add a Vehicle</strong><p>Navigate to "My Vehicles" tab → click "Add Vehicle" → fill in the form.</p></div>
+        <div class="help-item"><strong>🗺️ Register a Trip</strong><p>Go to "Trip Registration" → click "Add New Trip" → complete the 5-step wizard.</p></div>
+        <div class="help-item"><strong>🏷️ Change Role</strong><p>Click your role card on the dashboard or use the hamburger menu.</p></div>
+        <div class="help-item"><strong>📞 Support</strong><p>Email: <a href="mailto:crazytyagi01@gmail.com" style="color:var(--accent)" data-config="supportEmail">crazytyagi01@gmail.com</a><br>Phone: <a href="tel:+919971690250" style="color:var(--accent)" data-config="supportPhone">+91 9971690250</a></p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Account -->
+  <div class="sub-modal-overlay" id="modal-delete-account" onclick="closeSubModalOnOverlay(event,'delete-account')">
+    <div class="sub-modal">
+      <button class="modal-close" onclick="closeSubModal('delete-account')">&times;</button>
+      <div class="sub-modal-header danger-header"><span>⚠️</span><h2>Request Account Deletion</h2></div>
+      <div class="delete-warning">⚠️ This is <strong>irreversible</strong>. All data will be permanently removed.</div>
+      <form class="modal-form" id="form-delete-account" onsubmit="handleDeleteRequest(event)">
+        <div class="form-group">
+          <label for="del-reason">Reason</label>
+          <div class="input-wrap"><span class="input-icon">📝</span>
+            <select id="del-reason" required>
+              <option value="" disabled selected>Select a reason</option>
+              <option>No longer needed</option>
+              <option>Switching platform</option>
+              <option>Privacy concerns</option>
+              <option>Other</option>
+            </select></div>
+        </div>
+        <div class="form-group">
+          <label for="del-confirm">Type DELETE to confirm</label>
+          <div class="input-wrap"><span class="input-icon">✍️</span>
+            <input type="text" id="del-confirm" placeholder='Type "DELETE"' required /></div>
+        </div>
+        <button type="submit" class="btn-danger-full">Submit Deletion Request</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom Confirm Modal -->
+  <div class="confirm-overlay" id="custom-confirm-overlay">
+    <div class="confirm-box">
+      <div class="cb-icon">❓</div>
+      <h3 class="cb-title">Please Confirm</h3>
+      <p class="cb-message" id="custom-confirm-message">Are you sure?</p>
+      <div class="cb-actions">
+        <button class="cb-btn cb-btn-cancel" id="custom-confirm-cancel">Cancel</button>
+        <button class="cb-btn cb-btn-ok" id="custom-confirm-ok">Yes, Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toast-icon">✅</span>
+    <span class="toast-msg"  id="toast-msg">Success!</span>
+  </div>
+
+
+  <script src="dashboard.js"></script>
+  <script src="custom-select.js"></script>
+</body>
+</html>

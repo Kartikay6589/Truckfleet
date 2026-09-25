@@ -1,0 +1,93 @@
+/* ============================================
+   CUSTOM SELECT UI
+   ============================================ */
+.custom-select-wrapper {
+  position: relative;
+  user-select: none;
+  width: 100%;
+}
+
+.custom-select-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.8rem 1rem 0.8rem 2.8rem; /* Matches .input-wrap input padding */
+  background: var(--bg-input);
+  border: 1.5px solid var(--border-color, var(--border));
+  border-radius: var(--radius-sm, var(--r-sm));
+  color: var(--text-primary, var(--text));
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.custom-select-wrapper.open .custom-select-trigger {
+  border-color: var(--accent-500, var(--accent));
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: var(--bg-input-focus, var(--bg-input));
+}
+
+.custom-select-trigger .arrow {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--text-secondary, var(--text2));
+  transition: transform 0.3s ease;
+}
+
+.custom-select-wrapper.open .arrow {
+  transform: rotate(180deg);
+}
+
+.custom-options {
+  position: absolute;
+  display: block;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary, var(--bg2));
+  border: 1px solid var(--border-color, var(--border));
+  border-radius: var(--radius-sm, var(--r-sm));
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.custom-select-wrapper.open .custom-options {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: all;
+  transform: translateY(0);
+}
+
+.custom-option {
+  padding: 0.8rem 1rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary, var(--text2));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.custom-option:hover {
+  background: var(--bg-input-focus, var(--bg-input));
+  color: var(--accent-500, var(--accent));
+}
+
+.custom-option.selected {
+  color: var(--text-primary, var(--text));
+  background: rgba(var(--accent-rgb),0.1); /* Slight orange tint */
+  font-weight: 600;
+  border-left: 3px solid var(--accent-500, var(--accent));
+}

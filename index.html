@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TruckFleet Pro — Reliable Freight &amp; Logistics Solutions</title>
+  <script src="site-config.js"></script>
+  <meta name="description" content="TruckFleet Pro connects truck owners with businesses for fast, reliable goods delivery." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="index.css" />
+  <link rel="stylesheet" href="custom-select.css" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+
+  <!-- Cursor circle -->
+  <div class="cursor-circle" id="cursor-circle"></div>
+  <div class="cursor-dot" id="cursor-dot"></div>
+
+  <!-- ============ NAVBAR ============ -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-logo" id="nav-logo">
+        <span class="logo-icon">🚛</span>
+        <span class="logo-text">Truck<span class="logo-accent">Fleet</span> Pro</span>
+      </a>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#home" class="nav-link">Home</a></li>
+        <li><a href="#features" class="nav-link">Features</a></li>
+        <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+        <li><a href="#contact" class="nav-link">Contact</a></li>
+      </ul>
+      <div class="nav-actions">
+        <!-- Theme Toggle -->
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle Light/Dark Mode">
+          <span class="theme-icon" id="theme-icon">🌙</span>
+        </button>
+        <button class="btn btn-ghost" id="btn-signin-nav" onclick="openModal('signin')">Sign In</button>
+        <button class="btn btn-primary" id="btn-signup-nav" onclick="openModal('signup')">Sign Up</button>
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="home">
+    <div class="hero-bg-grid"></div>
+    <div class="hero-orb hero-orb-1"></div>
+    <div class="hero-orb hero-orb-2"></div>
+    <div class="hero-orb hero-orb-3"></div>
+    <div class="hero-orb hero-orb-4"></div>
+    <div class="hero-particles" id="hero-particles"></div>
+    <div class="hero-overlay"></div>
+
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Trusted by 500+ Fleet Owners
+      </div>
+      <h1 class="hero-title">
+        Delivering Goods,<br />
+        <span class="gradient-text">Connecting Businesses.</span>
+      </h1>
+      <p class="hero-subtitle">
+        Own your trucks. Set your prices. Pick up and deliver goods across cities with full control over your fleet and earnings.
+      </p>
+      <div class="hero-cta">
+        <button class="btn btn-primary btn-lg" id="btn-signup-hero" onclick="openModal('signup')">
+          Get Started Free
+          <span class="btn-arrow">→</span>
+        </button>
+        <button class="btn btn-outline btn-lg" id="btn-learn-more" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">
+          Learn More
+        </button>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-number" data-target="1200">0</span>
+          <span class="stat-label">Active Trucks</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number" data-target="8500">0</span>
+          <span class="stat-label">Deliveries Done</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number" data-target="350">0</span>
+          <span class="stat-label">Cities Covered</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="truck-card floating">
+        <div class="truck-card-icon">📦</div>
+        <div class="truck-card-info">
+          <span class="truck-card-title">Live Shipment</span>
+          <span class="truck-card-status status-active">In Transit</span>
+        </div>
+      </div>
+      <div class="truck-card floating delay-1">
+        <div class="truck-card-icon">💰</div>
+        <div class="truck-card-info">
+          <span class="truck-card-title">₹18,500 Earned</span>
+          <span class="truck-card-status status-done">Completed</span>
+        </div>
+      </div>
+      <div class="truck-card floating delay-2">
+        <div class="truck-card-icon">🚛</div>
+        <div class="truck-card-info">
+          <span class="truck-card-title">Fleet: 12 Trucks</span>
+          <span class="truck-card-status status-info">Online</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="features" id="features">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-tag">Why Choose Us</span>
+        <h2 class="section-title">Everything You Need to <span class="gradient-text">Manage Your Fleet</span></h2>
+        <p class="section-subtitle">From pricing your loads to tracking deliveries — we've got every tool a fleet owner needs.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card" id="feature-pricing">
+          <div class="feature-icon-wrap"><span class="feature-icon">💲</span></div>
+          <h3 class="feature-title">Set Your Own Prices</h3>
+          <p class="feature-desc">Full control over load pricing. Set rates based on distance, weight, and goods type. No middlemen.</p>
+          <div class="feature-glow"></div>
+        </div>
+        <div class="feature-card" id="feature-tracking">
+          <div class="feature-icon-wrap"><span class="feature-icon">📍</span></div>
+          <h3 class="feature-title">Real-Time Tracking</h3>
+          <p class="feature-desc">Track every truck in your fleet with live GPS updates. Know where your goods are at all times.</p>
+          <div class="feature-glow"></div>
+        </div>
+        <div class="feature-card" id="feature-fleet">
+          <div class="feature-icon-wrap"><span class="feature-icon">🚛</span></div>
+          <h3 class="feature-title">Fleet Management</h3>
+          <p class="feature-desc">Add trucks, assign drivers, and manage your entire fleet from one powerful dashboard.</p>
+          <div class="feature-glow"></div>
+        </div>
+        <div class="feature-card" id="feature-payments">
+          <div class="feature-icon-wrap"><span class="feature-icon">🏦</span></div>
+          <h3 class="feature-title">Instant Payments</h3>
+          <p class="feature-desc">Get paid instantly after each delivery. Transparent billing with zero hidden charges.</p>
+          <div class="feature-glow"></div>
+        </div>
+        <div class="feature-card" id="feature-analytics">
+          <div class="feature-icon-wrap"><span class="feature-icon">📊</span></div>
+          <h3 class="feature-title">Smart Analytics</h3>
+          <p class="feature-desc">Detailed reports on earnings, routes, fuel, and performance to optimize your business.</p>
+          <div class="feature-glow"></div>
+        </div>
+        <div class="feature-card" id="feature-support">
+          <div class="feature-icon-wrap"><span class="feature-icon">🛡️</span></div>
+          <h3 class="feature-title">24/7 Support</h3>
+          <p class="feature-desc">Dedicated support team available round the clock. We've got your back on every delivery.</p>
+          <div class="feature-glow"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-tag">Simple Process</span>
+        <h2 class="section-title">How It <span class="gradient-text">Works</span></h2>
+        <p class="section-subtitle">Start earning in three simple steps. It's that easy.</p>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card" id="step-1">
+          <div class="step-number">01</div>
+          <div class="step-line"></div>
+          <h3 class="step-title">Register Your Fleet</h3>
+          <p class="step-desc">Sign up, add your trucks, and set up your fleet profile with all the details.</p>
+        </div>
+        <div class="step-card" id="step-2">
+          <div class="step-number">02</div>
+          <div class="step-line"></div>
+          <h3 class="step-title">Accept &amp; Price Loads</h3>
+          <p class="step-desc">Browse available loads, set your own price, pick up goods from the source location.</p>
+        </div>
+        <div class="step-card" id="step-3">
+          <div class="step-number">03</div>
+          <div class="step-line"></div>
+          <h3 class="step-title">Deliver &amp; Get Paid</h3>
+          <p class="step-desc">Deliver the goods safely to the destination and receive instant payment.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section class="cta-section" id="contact">
+    <div class="section-container">
+      <div class="cta-card">
+        <div class="cta-glow"></div>
+        <h2 class="cta-title">Ready to Hit the Road?</h2>
+        <p class="cta-subtitle">Join hundreds of fleet owners already growing their business with TruckFleet Pro.</p>
+        <div class="cta-buttons">
+          <button class="btn btn-light btn-lg" id="btn-signup-cta" onclick="openModal('signup')">
+            Create Free Account <span class="btn-arrow">→</span>
+          </button>
+          <button class="btn btn-ghost-light btn-lg" id="btn-signin-cta" onclick="openModal('signin')">
+            Sign In
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="section-container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="nav-logo">
+            <span class="logo-icon">🚛</span>
+            <span class="logo-text">Truck<span class="logo-accent">Fleet</span> Pro</span>
+          </a>
+          <p class="footer-desc">Empowering truck owners to deliver goods across the country with full control, fair pricing, and reliable earnings.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <ul>
+            <li><a href="about.html">About Us</a></li>
+            <li><a href="careers.html">Careers</a></li>
+            <li><a href="blog.html">Blog</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Support</h4>
+          <ul>
+            <li><a href="mailto:crazytyagi01@gmail.com?subject=Help%20Request">Help Center</a></li>
+            <li><a href="mailto:crazytyagi01@gmail.com" data-config="supportEmail">crazytyagi01@gmail.com</a></li>
+            <li><a href="tel:+919971690250" data-config="supportPhone">+91 9971690250</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="privacy.html">Privacy Policy</a></li>
+            <li><a href="terms.html">Terms of Service</a></li>
+            <li><a href="licenses.html">Licenses</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 TruckFleet Pro. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============ SIGN IN MODAL ============ -->
+  <div class="modal-overlay" id="modal-signin" onclick="closeModalOnOverlay(event, 'signin')">
+    <div class="modal" role="dialog" aria-labelledby="signin-title">
+      <button class="modal-close" id="btn-close-signin" onclick="closeModal('signin')" aria-label="Close">&times;</button>
+      <div class="modal-header">
+        <span class="modal-icon">🔑</span>
+        <h2 class="modal-title" id="signin-title">Welcome Back</h2>
+        <p class="modal-subtitle">Sign in to your TruckFleet Pro account</p>
+      </div>
+      <div class="form-error" id="signin-error"></div>
+      <form class="modal-form" id="form-signin" onsubmit="handleSignIn(event)" novalidate>
+        <div class="form-group">
+          <label for="signin-email">Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉️</span>
+            <input type="email" id="signin-email" placeholder="you@example.com" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="signin-password">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="signin-password" placeholder="Enter your password" required />
+            <button type="button" class="btn-toggle-pwd" id="toggle-signin-pwd" onclick="togglePasswordVisibility('signin-password', 'toggle-signin-pwd')">👁️</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Security Check</label>
+          <div class="captcha-container">
+            <div class="captcha-box">
+              <canvas id="captcha-canvas-signin" width="140" height="48"></canvas>
+              <button type="button" class="btn-captcha-refresh" onclick="refreshCaptcha('signin')" title="Refresh CAPTCHA">↻</button>
+            </div>
+            <div class="input-wrap captcha-input-wrap">
+              <span class="input-icon">🛡️</span>
+              <input type="text" id="signin-captcha" placeholder="Enter code" required autocomplete="off" />
+            </div>
+          </div>
+        </div>
+        <div class="form-options">
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="signin-remember" />
+            <span class="checkmark"></span>
+            Remember me
+          </label>
+          <a href="forgot-password.html" class="form-link">Forgot password?</a>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="btn-submit-signin">
+          Sign In <span class="btn-arrow">→</span>
+        </button>
+      </form>
+      <div class="modal-footer">
+        <p>Don't have an account? <a href="#" class="form-link" onclick="switchModal('signup'); return false;">Sign Up</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SIGN UP MODAL ============ -->
+  <div class="modal-overlay" id="modal-signup" onclick="closeModalOnOverlay(event, 'signup')">
+    <div class="modal" role="dialog" aria-labelledby="signup-title">
+      <button class="modal-close" id="btn-close-signup" onclick="closeModal('signup')" aria-label="Close">&times;</button>
+      <div class="modal-header">
+        <span class="modal-icon">🚀</span>
+        <h2 class="modal-title" id="signup-title">Create Account</h2>
+        <p class="modal-subtitle">Join TruckFleet Pro and start delivering today</p>
+      </div>
+      <div class="form-error" id="signup-error"></div>
+      <form class="modal-form" id="form-signup" onsubmit="handleSignUp(event)" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="signup-firstname">First Name</label>
+            <div class="input-wrap">
+              <span class="input-icon">👤</span>
+              <input type="text" id="signup-firstname" placeholder="Rajesh" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="signup-lastname">Last Name</label>
+            <div class="input-wrap">
+              <span class="input-icon">👤</span>
+              <input type="text" id="signup-lastname" placeholder="Kumar" required />
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="signup-phone">Phone Number</label>
+          <div class="input-with-verify">
+            <div class="input-wrap">
+              <span class="input-icon">📱</span>
+              <input type="tel" id="signup-phone" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" oninput="this.value = this.value.replace(/\D/g, '')" required />
+            </div>
+            <button type="button" class="btn-verify" id="btn-verify-phone" onclick="sendOtp('phone')">Verify</button>
+          </div>
+          <div class="otp-container" id="otp-container-phone">
+            <p>An OTP has been sent to your phone via SMS.</p>
+            <div class="otp-input-group">
+              <input type="text" id="otp-input-phone" placeholder="Enter 6-digit OTP" maxlength="6" inputmode="numeric" autocomplete="one-time-code" />
+              <button type="button" class="btn-otp-confirm" onclick="verifyOtp('phone')">Confirm</button>
+            </div>
+            <button type="button" class="btn-resend-otp" id="btn-resend-phone" onclick="resendOtp('phone')">
+              <span class="resend-icon">↻</span> Resend Code
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="signup-email">Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉️</span>
+            <input type="email" id="signup-email" placeholder="you@example.com" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="signup-password" placeholder="Min 10 characters, 1 uppercase" required minlength="10" autocomplete="new-password" />
+            <button type="button" class="btn-toggle-pwd" id="toggle-signup-pwd" onclick="togglePasswordVisibility('signup-password', 'toggle-signup-pwd')">👁️</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="signup-role">I am a</label>
+          <div class="input-wrap">
+            <span class="input-icon">🏢</span>
+            <select id="signup-role" required>
+              <option value="" disabled selected>Select your role</option>
+              <option value="fleet-owner">Fleet Owner / Truck Owner</option>
+              <option value="company">Company (Need Delivery)</option>
+              <option value="driver">Truck Driver</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Security Check</label>
+          <div class="captcha-container">
+            <div class="captcha-box">
+              <canvas id="captcha-canvas-signup" width="140" height="48"></canvas>
+              <button type="button" class="btn-captcha-refresh" onclick="refreshCaptcha('signup')" title="Refresh CAPTCHA">↻</button>
+            </div>
+            <div class="input-wrap captcha-input-wrap">
+              <span class="input-icon">🛡️</span>
+              <input type="text" id="signup-captcha" placeholder="Enter code" required autocomplete="off" />
+            </div>
+          </div>
+        </div>
+        <div class="form-options">
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="signup-terms" required />
+            <span class="checkmark"></span>
+            I agree to the <a href="terms.html" class="form-link" target="_blank">Terms &amp; Conditions</a>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="btn-submit-signup">
+          Create Account <span class="btn-arrow">→</span>
+        </button>
+      </form>
+      <div class="modal-footer">
+        <p>Already have an account? <a href="#" class="form-link" onclick="switchModal('signin'); return false;">Sign In</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TOAST ============ -->
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toast-icon">✅</span>
+    <span class="toast-msg" id="toast-msg">Success!</span>
+  </div>
+
+  <!-- Theme transition ripple overlay -->
+  <div class="theme-ripple" id="theme-ripple"></div>
+  <div class="theme-flash" id="theme-flash"></div>
+
+
+  <script src="script.js"></script>
+  <script src="custom-select.js"></script>
+  <!-- Custom Error Modal -->
+  <div class="confirm-overlay" id="custom-error-overlay">
+    <div class="confirm-box">
+      <div class="cb-icon" style="font-size: 3.5rem; animation: shakeError 0.5s ease-out forwards;">⚠️</div>
+      <h3 class="cb-title" style="color: var(--red);">Action Required</h3>
+      <p class="cb-message" id="custom-error-message">Error message goes here.</p>
+      <div class="cb-actions">
+        <button class="cb-btn cb-btn-cancel" onclick="closeCustomError()">Got it</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="cursor-static.js"></script>
+</body>
+</html>
