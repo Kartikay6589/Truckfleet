@@ -898,6 +898,22 @@ button:hover ~ .cursor-circle,
 .form-link { color:var(--accent-400); font-weight:600; transition:color var(--transition-fast); }
 .form-link:hover { color:var(--accent-300); }
 .modal-footer { text-align:center; margin-top:1.5rem; font-size:0.9rem; color:var(--text-muted); }
+.modal-footer-note { text-align:center; margin-top:1.25rem; font-size:0.82rem; color:var(--text-muted); }
+
+.btn-google {
+  width:100%; display:flex; align-items:center; justify-content:center; gap:0.7rem;
+  padding:0.9rem; margin-top:0.5rem; border-radius:var(--radius-md);
+  background:var(--bg-input); border:1px solid var(--border-color);
+  color:var(--text-primary); font-family:'Outfit',sans-serif; font-size:1rem; font-weight:600;
+  cursor:pointer; transition:var(--transition-fast);
+}
+.btn-google:hover:not(:disabled) { background:var(--bg-input-focus); border-color:var(--border-focus); transform:translateY(-1px); }
+.btn-google:disabled { opacity:0.6; cursor:not-allowed; }
+.google-icon {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:50%; background:#fff; color:#4285F4;
+  font-weight:800; font-size:0.9rem; flex-shrink:0;
+}
 
 /* ============================================
    TOAST

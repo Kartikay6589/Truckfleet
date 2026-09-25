@@ -7,22 +7,17 @@
 /* ── Auth guard & Global State ── */
 let currentUser = null;
 let currentVehicles = [];
+let uid = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!TFP.isLoggedIn()) {
+  const user = await FS.waitForUser();
+  if (!user) {
     location.href = 'index.html';
     return;
   }
-
-  const me = await TFP.api('/api/auth/me');
-  if (!me.success) {
-    if (me.status !== 401) { TFP.clearSession(); location.href = 'index.html'; }
-    return;
-  }
-  currentUser = me.user;
-
-  const vehiclesRes = await TFP.api('/api/vehicles');
-  currentVehicles = vehiclesRes.vehicles || [];
+  uid = user.uid;
+  currentUser = Object.assign({ id: uid }, await FS.getUserProfile(uid));
+  currentVehicles = await FS.getAll(uid, 'vehicles');
 
   loadTrip();
 });
@@ -98,14 +93,10 @@ async function loadTrip() {
 
   if (!tripId) { showError(loading, error); return; }
 
-  const [tripRes, allRes] = await Promise.all([
-    TFP.api(`/api/trips/${tripId}`),
-    TFP.api('/api/trips')
-  ]);
+  const trips = (await FS.getAll(uid, 'trips')).sort((a, b) => new Date(a.registeredAt) - new Date(b.registeredAt));
+  const trip = trips.find(t => t.id === tripId);
 
-  if (!tripRes.success) { showError(loading, error); return; }
-  const trip = tripRes.trip;
-  const trips = allRes.trips || [trip];
+  if (!trip) { showError(loading, error); return; }
   allTrips = trips;
 
   tripData = trip;
@@ -395,15 +386,14 @@ async function executePaidConfirm() {
   const toll = parseFloat(document.getElementById('exp-toll').value) || 0;
   const driver = parseFloat(document.getElementById('exp-driver').value) || 0;
 
-  const result = await TFP.api(`/api/trips/${tripData.id}/mark-paid`, {
-    method: 'POST',
-    body: { fuelExpense: fuel, tollExpense: toll, driverExpense: driver }
-  });
-  if (!result.success) {
-    showToast(result.message || 'Could not save this payment.', 'error');
+  const updates = { paid: true, paidAt: new Date().toISOString(), balance: 0, fuelExpense: fuel, tollExpense: toll, driverExpense: driver };
+  try {
+    await FS.update(uid, 'trips', tripData.id, updates);
+  } catch (err) {
+    showToast(err.message || 'Could not save this payment.', 'error');
     return;
   }
-  tripData = result.trip;
+  Object.assign(tripData, updates);
 
   // Stop counter
   if (counterInterval) clearInterval(counterInterval);
@@ -431,8 +421,11 @@ function debounce(fn, ms) {
 }
 
 const saveAdvance = debounce(async (tripId, advance) => {
-  const result = await TFP.api(`/api/trips/${tripId}/advance`, { method: 'PATCH', body: { advance } });
-  if (!result.success) showToast(result.message || 'Could not save the advance amount.', 'error');
+  try {
+    await FS.update(uid, 'trips', tripId, { advance, balance: tripData.total - advance });
+  } catch (err) {
+    showToast(err.message || 'Could not save the advance amount.', 'error');
+  }
 }, 500);
 
 /* ── Live Update Advance ── */
@@ -460,10 +453,11 @@ function liveUpdateAdvance() {
 }
 
 const saveExpenses = debounce(async (tripId, fuelExpense, tollExpense, driverExpense) => {
-  const result = await TFP.api(`/api/trips/${tripId}/expenses`, {
-    method: 'PATCH', body: { fuelExpense, tollExpense, driverExpense }
-  });
-  if (!result.success) showToast(result.message || 'Could not save these expenses.', 'error');
+  try {
+    await FS.update(uid, 'trips', tripId, { fuelExpense, tollExpense, driverExpense });
+  } catch (err) {
+    showToast(err.message || 'Could not save these expenses.', 'error');
+  }
 }, 500);
 
 /* ── Live Update Expenses ── */

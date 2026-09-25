@@ -1,3 +1,0 @@
-# The backend is deployed separately on Render — Vercel only serves the
-# static frontend files at the repo root.
-backend/

@@ -1,12 +1,12 @@
 /* ================================================
-   TRUCKFLEET PRO — script.js  v2.0
-   Landing page: theme, cursor, auth, animations
+   TRUCKFLEET PRO — script.js  v3.0 (Firebase)
+   Landing page: theme, cursor, animations, Google sign-in
    ================================================ */
 
 /* ---- Redirect if already logged in ---- */
-if (TFP.isLoggedIn()) {
-  window.location.href = 'dashboard.html';
-}
+FS.waitForUser().then((user) => {
+  if (user) window.location.href = 'dashboard.html';
+});
 
 /* ---- Theme System ---- */
 const themeToggle = document.getElementById('theme-toggle');
@@ -183,122 +183,21 @@ document.querySelectorAll('.truck-card').forEach(card => {
   card.addEventListener('mouseleave', () => { card.style.transform = ''; });
 });
 
-/* ---- CAPTCHA Logic ---- */
-let captchaData = { signin: '', signup: '' };
-
-function generateCaptchaText(length = 6) {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-window.refreshCaptcha = function(type) {
-  const canvas = document.getElementById(`captcha-canvas-${type}`);
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const width = canvas.width;
-  const height = canvas.height;
-  
-  // Clear and fill background
-  ctx.clearRect(0, 0, width, height);
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  ctx.fillStyle = isLight ? '#f8fafc' : '#0f172a';
-  ctx.fillRect(0, 0, width, height);
-  
-  // Generate text
-  const text = generateCaptchaText();
-  captchaData[type] = text;
-  
-  // Draw noise dots
-  for (let i = 0; i < 50; i++) {
-    ctx.fillStyle = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)';
-    ctx.beginPath();
-    ctx.arc(Math.random() * width, Math.random() * height, Math.random() * 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  
-  // Draw noise lines
-  for (let i = 0; i < 5; i++) {
-    ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = Math.random() * 2;
-    ctx.beginPath();
-    ctx.moveTo(Math.random() * width, Math.random() * height);
-    ctx.lineTo(Math.random() * width, Math.random() * height);
-    ctx.stroke();
-  }
-  
-  // Draw text
-  ctx.font = 'bold 24px Outfit, sans-serif';
-  ctx.textBaseline = 'middle';
-  
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const x = 15 + (i * 20);
-    const y = height / 2;
-    const angle = (Math.random() - 0.5) * 0.5;
-    
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    ctx.fillStyle = isLight ? '#0f1f3d' : '#f0f4f8';
-    
-    // Randomize slight vertical offset
-    ctx.fillText(char, 0, (Math.random() - 0.5) * 10);
-    ctx.restore();
-  }
-};
-
 /* ---- Modal logic ---- */
 function openModal(type) {
   document.getElementById(`modal-${type}`).classList.add('active');
   document.body.style.overflow = 'hidden';
-  if (type === 'signin' || type === 'signup') refreshCaptcha(type);
 }
 function closeModal(type) {
   document.getElementById(`modal-${type}`).classList.remove('active');
   document.body.style.overflow = '';
-  if (type === 'signup' && typeof resetSignupForm === 'function') resetSignupForm();
-  
-  // Clear input
-  const captchaInput = document.getElementById(`${type}-captcha`);
-  if (captchaInput) captchaInput.value = '';
 }
 function closeModalOnOverlay(e, type) { if (e.target === e.currentTarget) closeModal(type); }
-function switchModal(toType) {
-  const from = toType === 'signup' ? 'signin' : 'signup';
-  closeModal(from);
-  setTimeout(() => openModal(toType), 200);
-}
-function handleForgotPwd(email, btn) {
-  console.log(`Sending reset link to ${email}...`);
-  setTimeout(() => {
-    btn.innerHTML = 'Reset Link Sent! ✉️';
-    btn.style.background = 'var(--green)';
-    btn.style.borderColor = 'var(--green)';
-    setTimeout(() => closeModal('forgot-pwd'), 1500);
-  }, 1200);
-}
-
-/* ---- Password Toggle ---- */
-window.togglePasswordVisibility = function(inputId, toggleBtnId) {
-  const input = document.getElementById(inputId);
-  const btn = document.getElementById(toggleBtnId);
-  if (input.type === 'password') {
-    input.type = 'text';
-    btn.textContent = '🙈';
-  } else {
-    input.type = 'password';
-    btn.textContent = '👁️';
-  }
-};
 
 /* ---- Custom Animated Error Modal ---- */
 window.showAnimatedError = function(message) {
   let overlay = document.getElementById('custom-error-overlay');
-  
+
   // Create it dynamically if it doesn't exist
   if (!overlay) {
     overlay = document.createElement('div');
@@ -319,15 +218,12 @@ window.showAnimatedError = function(message) {
 
   const msgEl = document.getElementById('custom-error-message');
   msgEl.textContent = message;
-  
-  // Use a tiny timeout to ensure DOM update before adding 'show' class for the transition
+
   setTimeout(() => {
     overlay.classList.add('show');
-    // Briefly shake the icon
     const icon = overlay.querySelector('.cb-icon');
-    if(icon) {
+    if (icon) {
       icon.style.animation = 'none';
-      // trigger reflow
       void icon.offsetWidth;
       icon.style.animation = 'shakeError 0.5s ease-out forwards';
     }
@@ -340,10 +236,8 @@ window.closeCustomError = function() {
 };
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  // Only close what is actually open (closing signup also wipes the form)
-  ['signin', 'signup'].forEach(t => {
-    if (document.getElementById(`modal-${t}`).classList.contains('active')) closeModal(t);
-  });
+  const authModal = document.getElementById('modal-auth');
+  if (authModal && authModal.classList.contains('active')) closeModal('auth');
   closeCustomError();
 });
 
@@ -359,353 +253,35 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.classList.remove('show'), 3500);
 }
 
-function showFormError(id, msg) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 4000);
-}
+/* ---- Google Sign-In ---- */
+async function continueWithGoogle() {
+  const btn = document.getElementById('btn-google-signin');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
 
-/* ---- Sign Up ---- */
-/* ════════════════════════════════════════════
-   OTP VERIFICATION LOGIC
-════════════════════════════════════════════ */
-let isPhoneVerified = false;
-let otpMode = null;        // 'server' (backend/Twilio) or 'demo' (local fallback)
-let otpNotifTimer = null;
-let resendCooldownTimer = null;
+  try {
+    const user = await FS.signInWithGoogle();
+    closeModal('auth');
 
-/* On-screen OTP notification — only used when no real SMS is sent
-   (demo mode, or backend running without Twilio credentials) */
-function showOtpNotification(otp) {
-  let existing = document.getElementById('otp-notif-overlay');
-  if (existing) existing.remove();
-  if (otpNotifTimer) clearTimeout(otpNotifTimer);
-
-  const overlay = document.createElement('div');
-  overlay.className = 'otp-notif-overlay';
-  overlay.id = 'otp-notif-overlay';
-  overlay.innerHTML = `
-    <div class="otp-notif-card">
-      <div class="otp-notif-icon">📲</div>
-      <p class="otp-notif-title">Demo Verification Code</p>
-      <div class="otp-notif-code-wrap">
-        <span class="otp-notif-code-label">Your OTP Code</span>
-        <span class="otp-notif-code">${TFP.esc(otp)}</span>
+    const overlay = document.createElement('div');
+    overlay.className = 'welcome-overlay';
+    overlay.innerHTML = `
+      <div class="welcome-content">
+        <div class="wc-icon">🚀</div>
+        <h2 class="wc-title">Welcome, ${TFP.esc((user.displayName || 'there').split(' ')[0])}!</h2>
+        <p class="wc-subtitle">Launching your TruckFleet Pro Dashboard...</p>
+        <div class="wc-loader"></div>
       </div>
-      <p class="otp-notif-hint">SMS isn't configured, so the code is shown here.<br>This notification will auto-dismiss in 8 seconds.</p>
-      <div class="otp-notif-timer"><div class="otp-notif-timer-bar"></div></div>
-      <button class="otp-notif-close" onclick="dismissOtpNotification()">Got it</button>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => overlay.classList.add('show'));
-  });
-  otpNotifTimer = setTimeout(() => dismissOtpNotification(), 8000);
-}
-
-function dismissOtpNotification() {
-  const overlay = document.getElementById('otp-notif-overlay');
-  if (overlay) {
-    overlay.classList.remove('show');
-    setTimeout(() => overlay.remove(), 400);
-  }
-  if (otpNotifTimer) { clearTimeout(otpNotifTimer); otpNotifTimer = null; }
-}
-
-/* 30-second cooldown on the resend button so the SMS can't be spammed */
-function startResendCooldown(seconds = 30) {
-  const btn = document.getElementById('btn-resend-phone');
-  stopResendCooldown();
-  let left = seconds;
-  btn.disabled = true;
-  btn.innerHTML = `<span class="resend-icon">↻</span> Resend in ${left}s`;
-  resendCooldownTimer = setInterval(() => {
-    left--;
-    if (left <= 0) stopResendCooldown();
-    else btn.innerHTML = `<span class="resend-icon">↻</span> Resend in ${left}s`;
-  }, 1000);
-}
-function stopResendCooldown() {
-  if (resendCooldownTimer) { clearInterval(resendCooldownTimer); resendCooldownTimer = null; }
-  const btn = document.getElementById('btn-resend-phone');
-  if (btn) { btn.disabled = false; btn.innerHTML = '<span class="resend-icon">↻</span> Resend Code'; }
-}
-
-async function deliverOtp(phone) {
-  const result = await TFP.otp.send(phone);
-  if (!result.ok) { showAnimatedError(result.message); return false; }
-  otpMode = result.mode;
-  if (result.devCode) showOtpNotification(result.devCode);
-  else showToast(`OTP sent to ${TFP_CONFIG.countryCode} ${phone}`, 'success');
-  startResendCooldown();
-  return true;
-}
-
-async function sendOtp(type) {
-  if (type !== 'phone') return;
-  const phoneInput = document.getElementById('signup-phone');
-  const btn = document.getElementById('btn-verify-phone');
-
-  // Second click while the number is locked = "Change number"
-  if (phoneInput.disabled && !isPhoneVerified) { changeSignupPhone(); return; }
-
-  const phone = phoneInput.value.trim();
-  if (!/^\d{10}$/.test(phone)) {
-    showAnimatedError('Please enter a valid 10-digit phone number before verifying.');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Sending...';
-  const ok = await deliverOtp(phone);
-  btn.disabled = false;
-  btn.textContent = ok ? 'Change' : 'Verify';
-  if (!ok) return;
-
-  document.getElementById('otp-container-phone').style.display = 'block';
-  phoneInput.disabled = true;
-  document.getElementById('otp-input-phone').focus();
-}
-
-function changeSignupPhone() {
-  const phoneInput = document.getElementById('signup-phone');
-  phoneInput.disabled = false;
-  document.getElementById('otp-container-phone').style.display = 'none';
-  document.getElementById('otp-input-phone').value = '';
-  document.getElementById('btn-verify-phone').textContent = 'Verify';
-  stopResendCooldown();
-  otpMode = null;
-  phoneInput.focus();
-}
-
-async function resendOtp(type) {
-  if (type !== 'phone') return;
-  const btn = document.getElementById('btn-resend-phone');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="resend-icon">↻</span> Resending...';
-  const ok = await deliverOtp(document.getElementById('signup-phone').value.trim());
-  if (!ok) stopResendCooldown();
-}
-
-async function verifyOtp(type) {
-  if (type !== 'phone') return;
-  const enteredOtp = document.getElementById(`otp-input-${type}`).value.trim();
-  if (!/^\d{6}$/.test(enteredOtp)) {
-    showAnimatedError('Please enter the 6-digit OTP.');
-    return;
-  }
-  const phone = document.getElementById('signup-phone').value.trim();
-  const result = await TFP.otp.verify(phone, enteredOtp, otpMode);
-
-  if (result.ok) {
-    isPhoneVerified = true;
-    dismissOtpNotification();
-    stopResendCooldown();
-    document.getElementById(`otp-container-${type}`).style.display = 'none';
-    const btn = document.getElementById(`btn-verify-${type}`);
-    btn.innerHTML = '✅ Verified';
-    btn.classList.add('verified');
-    btn.disabled = true;
-  } else {
-    showAnimatedError(result.message);
-  }
-}
-
-// Reset OTP states when closing signup
-function resetSignupForm() {
-  document.getElementById('form-signup').reset();
-
-  isPhoneVerified = false;
-  otpMode = null;
-  dismissOtpNotification();
-  stopResendCooldown();
-
-  ['phone'].forEach(type => {
-    document.getElementById(`signup-${type}`).disabled = false;
-    document.getElementById(`otp-container-${type}`).style.display = 'none';
-    document.getElementById(`otp-input-${type}`).value = '';
-    const btn = document.getElementById(`btn-verify-${type}`);
-    if(btn) {
-      btn.innerHTML = 'Verify';
-      btn.classList.remove('verified');
-      btn.disabled = false;
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('show'), 10);
+    setTimeout(() => location.href = 'dashboard.html', 2000);
+  } catch (err) {
+    if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+      showAnimatedError(err.message || 'Could not sign in with Google. Please try again.');
     }
-  });
-}
-
-async function handleSignUp(e) {
-  e.preventDefault();
-  const firstName = document.getElementById('signup-firstname').value.trim();
-  const lastName = document.getElementById('signup-lastname').value.trim();
-  const email = document.getElementById('signup-email').value.trim().toLowerCase();
-  const phone = document.getElementById('signup-phone').value.trim();
-  const password = document.getElementById('signup-password').value;
-  const role = document.getElementById('signup-role').value;
-  const terms = document.getElementById('signup-terms').checked;
-  const captchaInput = document.getElementById('signup-captcha').value.trim();
-
-  // 1. Mandatory Fields
-  if (!firstName) {
-    showAnimatedError('First name is mandatory. Please enter your first name.');
-    return;
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<span class="google-icon">G</span> Continue with Google'; }
   }
-  if (!lastName) {
-    showAnimatedError('Last name is mandatory. Please enter your last name.');
-    return;
-  }
-  if (!email) {
-    showAnimatedError('Email address is mandatory. Please enter a valid email.');
-    return;
-  }
-  if (!phone) {
-    showAnimatedError('Phone number is mandatory. Please enter your phone number.');
-    return;
-  }
-  if (!password) {
-    showAnimatedError('Password is mandatory. Please create a strong password.');
-    return;
-  }
-  if (!role) {
-    showAnimatedError('Role selection is mandatory. Please select your role.');
-    return;
-  }
-  if (!terms) {
-    showAnimatedError('You must agree to the Terms & Conditions.');
-    return;
-  }
-
-  // 2. CAPTCHA Validation
-  if (captchaInput.toLowerCase() !== captchaData.signup.toLowerCase()) {
-    showAnimatedError('Invalid Security Code. Please try again.');
-    refreshCaptcha('signup');
-    document.getElementById('signup-captcha').value = '';
-    return;
-  }
-
-  // 3. Email format validation (domain restriction is set in site-config.js)
-  const domain = TFP_CONFIG.allowedEmailDomain;
-  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
-    showAnimatedError('Please enter a valid email address.');
-    return;
-  }
-  if (domain && !email.endsWith('@' + domain.toLowerCase())) {
-    showAnimatedError(`Please enter a valid @${domain} address.`);
-    return;
-  }
-
-  // 4. Phone number validation (exactly 10 digits)
-  if (!/^\d{10}$/.test(phone)) {
-    showAnimatedError('Phone number must be exactly 10 digits.');
-    return;
-  }
-
-  // 5. Password rules (configured in site-config.js)
-  const pwError = TFP.passwordError(password);
-  if (pwError) {
-    showAnimatedError(pwError);
-    return;
-  }
-
-  // 6. OTP Verification Check
-  if (!isPhoneVerified) {
-    showAnimatedError('Please verify your Phone Number before signing up.');
-    return;
-  }
-
-  // Create the account on the server
-  const submitBtn = document.getElementById('btn-submit-signup');
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Creating account...';
-  const result = await TFP.api('/api/auth/signup', {
-    method: 'POST',
-    body: { firstName, lastName, email, phone, password, role }
-  });
-  submitBtn.disabled = false;
-  submitBtn.innerHTML = 'Create Account <span class="btn-arrow">→</span>';
-
-  if (!result.success) {
-    showAnimatedError(result.message || 'Could not create your account. Please try again.');
-    return;
-  }
-
-  // Auto login
-  TFP.setSession(result.token, result.user, true);
-  closeModal('signup');
-
-  // Create beautiful welcome overlay
-  const overlay = document.createElement('div');
-  overlay.className = 'welcome-overlay';
-  overlay.innerHTML = `
-    <div class="welcome-content">
-      <div class="wc-icon">🚀</div>
-      <h2 class="wc-title">Welcome, ${TFP.esc(firstName)}!</h2>
-      <p class="wc-subtitle">Launching your TruckFleet Pro Dashboard...</p>
-      <div class="wc-loader"></div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-
-  // Trigger animation
-  setTimeout(() => overlay.classList.add('show'), 10);
-
-  // Redirect after animation completes
-  setTimeout(() => location.href = 'dashboard.html', 3000);
-}
-
-/* ---- Sign In ---- */
-async function handleSignIn(e) {
-  e.preventDefault();
-  const email = document.getElementById('signin-email').value.trim().toLowerCase();
-  const password = document.getElementById('signin-password').value;
-  const captchaInput = document.getElementById('signin-captcha').value.trim();
-
-  // Validate CAPTCHA
-  if (captchaInput.toLowerCase() !== captchaData.signin.toLowerCase()) {
-    showFormError('signin-error', '❌ Invalid Security Code. Please try again.');
-    refreshCaptcha('signin');
-    document.getElementById('signin-captcha').value = '';
-    return;
-  }
-
-  const submitBtn = document.getElementById('btn-submit-signin');
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Signing in...';
-  const result = await TFP.api('/api/auth/login', { method: 'POST', body: { email, password } });
-  submitBtn.disabled = false;
-  submitBtn.innerHTML = 'Sign In <span class="btn-arrow">→</span>';
-
-  if (!result.success) {
-    if (result.status === 404) showFormError('signin-error', '⚠️ Account not found. Please sign up.');
-    else if (result.status === 401) showFormError('signin-error', '❌ Incorrect password.');
-    else showFormError('signin-error', `❌ ${result.message || 'Could not sign in. Please try again.'}`);
-    return;
-  }
-
-  // "Remember me" keeps you signed in after the browser closes
-  TFP.setSession(result.token, result.user, document.getElementById('signin-remember').checked);
-  closeModal('signin');
-
-  // Create beautiful welcome overlay
-  const overlay = document.createElement('div');
-  overlay.className = 'welcome-overlay';
-  overlay.innerHTML = `
-    <div class="welcome-content">
-      <div class="wc-icon">🚀</div>
-      <h2 class="wc-title">Welcome back, ${TFP.esc(result.user.firstName)}!</h2>
-      <p class="wc-subtitle">Loading your TruckFleet Pro Dashboard...</p>
-      <div class="wc-loader"></div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-
-  // Trigger animation
-  setTimeout(() => overlay.classList.add('show'), 10);
-
-  // Redirect after animation completes
-  setTimeout(() => location.href = 'dashboard.html', 3000);
 }
 
 /* ---- Smooth scroll for nav links ---- */

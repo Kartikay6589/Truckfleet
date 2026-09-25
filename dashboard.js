@@ -10,38 +10,33 @@ let currentBrokerTrips = [];
 let currentNotifications = [];
 let currentDrivers = [];
 
-// All real data now lives on the server (backend/db.js), scoped to the
-// signed-in account by its login token — see site-config.js's TFP.api().
+// All real data lives in Firestore under users/{uid}/..., scoped to the
+// signed-in Google account — see firebase-init.js's FS helper.
+let uid = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!TFP.isLoggedIn()) {
+  const user = await FS.waitForUser();
+  if (!user) {
     location.href = 'index.html';
     return;
   }
+  uid = user.uid;
 
-  const me = await TFP.api('/api/auth/me');
-  if (!me.success) {
-    // TFP.api() already cleared the session and redirected on a real 401;
-    // this covers the "server unreachable" case too.
-    if (me.status !== 401) {
-      TFP.clearSession();
-      location.href = 'index.html';
-    }
-    return;
-  }
-  currentUser = me.user;
+  const profile = await FS.ensureUserProfile(user);
+  currentUser = Object.assign({ id: uid }, profile);
 
-  const [vehiclesRes, driversRes, tripsRes, brokerRes, notifsRes] = await Promise.all([
-    TFP.api('/api/vehicles'),
-    TFP.api('/api/drivers'),
-    TFP.api('/api/trips'),
-    TFP.api('/api/broker-trips'),
-    TFP.api('/api/notifications')
+  const [vehicles, drivers, trips, brokerTrips, notifications] = await Promise.all([
+    FS.getAll(uid, 'vehicles'),
+    FS.getAll(uid, 'drivers'),
+    FS.getAll(uid, 'trips'),
+    FS.getAll(uid, 'brokerTrips'),
+    FS.getAll(uid, 'notifications')
   ]);
-  currentVehicles = vehiclesRes.vehicles || [];
-  currentDrivers = driversRes.drivers || [];
-  currentTrips = tripsRes.trips || [];
-  currentBrokerTrips = brokerRes.trips || [];
-  currentNotifications = notifsRes.notifications || [];
+  currentVehicles = vehicles;
+  currentDrivers = drivers;
+  currentTrips = trips;
+  currentBrokerTrips = brokerTrips;
+  currentNotifications = notifications.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 25);
 
   // Render everything
   renderAccountDetails();
@@ -57,22 +52,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ── State helpers — currentX arrays are the local cache; every mutation
-   below calls the API first and only updates the cache once it succeeds ── */
+   below writes to Firestore first and only updates the cache once it succeeds ── */
 function getVehicles() { return currentVehicles; }
 function getDrivers() { return currentDrivers; }
 function getTrips() { return currentTrips; }
 function getNotifications() { return currentNotifications; }
 
-/* Vehicle-add/remove and driver-add/remove notifications are created
-   server-side (see backend/routes/vehicles.js and drivers.js) — this just
-   pulls the fresh list down so the bell badge and panel stay in sync. */
 async function refreshNotifications() {
-  const res = await TFP.api('/api/notifications');
-  if (res.success) {
-    currentNotifications = res.notifications;
-    updateNotifBadge();
-    renderNotifications();
-  }
+  const notifications = await FS.getAll(uid, 'notifications');
+  currentNotifications = notifications.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 25);
+  updateNotifBadge();
+  renderNotifications();
 }
 
 function updateNotifBadge() {
@@ -246,13 +236,13 @@ function selectRole(role) {
 async function saveRole() {
   if (!selectedRole) return;
 
-  const result = await TFP.api('/api/auth/role', { method: 'PATCH', body: { role: selectedRole } });
-  if (!result.success) {
-    showToast(result.message || 'Could not update your role.', 'error');
+  try {
+    await FS.userDoc(uid).update({ role: selectedRole });
+  } catch (err) {
+    showToast(err.message || 'Could not update your role.', 'error');
     return;
   }
-  currentUser = result.user;
-  TFP.setUser(currentUser);
+  currentUser.role = selectedRole;
 
   document.getElementById('ov-role').textContent = fmtRole(selectedRole);
   document.getElementById('sidemenu-role').textContent = fmtRole(selectedRole);
@@ -431,16 +421,24 @@ async function handleAddVehicle(e) {
     type = `Container - ${cType} ${cSize}`;
   }
 
-  const result = await TFP.api('/api/vehicles', {
-    method: 'POST',
-    body: { vehicleNumber: number, ownerName: owner, driverName: driver, vehicleType: type }
-  });
-  if (!result.success) {
-    showFormError('veh-error', `⚠️ ${result.message || 'Could not add this vehicle.'}`);
+  if (currentVehicles.some(v => v.vehicleNumber === number)) {
+    showFormError('veh-error', '⚠️ This vehicle number is already registered.');
     return;
   }
 
-  currentVehicles.push(result.vehicle);
+  let vehicle;
+  try {
+    vehicle = await FS.add(uid, 'vehicles', {
+      vehicleNumber: number, ownerName: owner, driverName: driver, vehicleType: type,
+      addedAt: new Date().toISOString()
+    });
+  } catch (err) {
+    showFormError('veh-error', `⚠️ ${err.message || 'Could not add this vehicle.'}`);
+    return;
+  }
+
+  currentVehicles.push(vehicle);
+  await FS.addNotification(uid, `New vehicle added: ${number} (${type})`);
   refreshNotifications();
   document.getElementById('form-add-vehicle').reset();
   handleVehTypeChange('');
@@ -480,13 +478,15 @@ async function deleteVehicle(id) {
   const v = currentVehicles.find(x => x.id === id);
   if (!v) return;
 
-  const result = await TFP.api(`/api/vehicles/${id}`, { method: 'DELETE' });
-  if (!result.success) {
-    showToast(result.message || 'Could not remove this vehicle.', 'error');
+  try {
+    await FS.remove(uid, 'vehicles', id);
+  } catch (err) {
+    showToast(err.message || 'Could not remove this vehicle.', 'error');
     return;
   }
 
   currentVehicles = currentVehicles.filter(x => x.id !== id);
+  await FS.addNotification(uid, `Vehicle removed: ${v.vehicleNumber}`);
   refreshNotifications();
   renderVehiclesTable();
   refreshStats();
@@ -523,13 +523,21 @@ async function handleAddDriver(e) {
     return;
   }
 
-  const result = await TFP.api('/api/drivers', { method: 'POST', body: { name, license } });
-  if (!result.success) {
-    showFormError('drv-error', `⚠️ ${result.message || 'Could not add this driver.'}`);
+  if (currentDrivers.some(d => d.license === license)) {
+    showFormError('drv-error', '⚠️ This driving license is already registered.');
     return;
   }
 
-  currentDrivers.push(result.driver);
+  let driver;
+  try {
+    driver = await FS.add(uid, 'drivers', { name, license, addedAt: new Date().toISOString() });
+  } catch (err) {
+    showFormError('drv-error', `⚠️ ${err.message || 'Could not add this driver.'}`);
+    return;
+  }
+
+  currentDrivers.push(driver);
+  await FS.addNotification(uid, `New driver added: ${name}`);
   refreshNotifications();
   document.getElementById('form-add-driver').reset();
   toggleAddDriverForm();
@@ -564,13 +572,15 @@ async function deleteDriver(id) {
   const d = currentDrivers.find(x => x.id === id);
   if (!d) return;
 
-  const result = await TFP.api(`/api/drivers/${id}`, { method: 'DELETE' });
-  if (!result.success) {
-    showToast(result.message || 'Could not remove this driver.', 'error');
+  try {
+    await FS.remove(uid, 'drivers', id);
+  } catch (err) {
+    showToast(err.message || 'Could not remove this driver.', 'error');
     return;
   }
 
   currentDrivers = currentDrivers.filter(x => x.id !== id);
+  await FS.addNotification(uid, `Driver removed: ${d.name}`);
   refreshNotifications();
   renderDriversTable();
   showToast('Driver removed.', 'info');
@@ -886,31 +896,42 @@ function buildConfirmCard() {
 
 /* ── Confirm & Register Trip ── */
 async function confirmTrip() {
-  // The server recomputes TDS/GST/balance itself from these raw inputs —
-  // it never trusts a pre-computed total from the client.
-  const result = await TFP.api('/api/trips', {
-    method: 'POST',
-    body: {
+  const tdsAmount = Math.round((wizard.total * (wizard.tdsRate || 0)) / 100);
+  const gstAmount = Math.round((wizard.total * (wizard.gstRate || 0)) / 100);
+  const netTotal = wizard.total - tdsAmount + gstAmount;
+  const balance = netTotal - wizard.advance;
+
+  let trip;
+  try {
+    trip = await FS.add(uid, 'trips', {
       vehicleId: wizard.vehicleId,
       vehicleNumber: wizard.vehicleNumber,
       vehicleType: wizard.vehicleType,
       from: wizard.from,
       to: wizard.to,
-      cycleOrigin: wizard.cycleOrigin,
-      total: wizard.total,
-      advance: wizard.advance,
-      tdsRate: wizard.tdsRate || 0,
+      cycleOrigin: wizard.cycleOrigin || wizard.from,
+      originalTotal: wizard.total,
+      tdsPercent: wizard.tdsRate || 0,
+      tdsAmount,
       gstType: wizard.gstType || 'NILL',
-      gstRate: wizard.gstRate || 0
-    }
-  });
-
-  if (!result.success) {
-    showToast(result.message || 'Could not register this trip.', 'error');
+      gstPercent: wizard.gstRate || 0,
+      gstAmount,
+      total: netTotal,
+      advance: wizard.advance,
+      balance,
+      paid: false,
+      paidAt: null,
+      fuelExpense: 0,
+      tollExpense: 0,
+      driverExpense: 0,
+      registeredAt: new Date().toISOString()
+    });
+  } catch (err) {
+    showToast(err.message || 'Could not register this trip.', 'error');
     return;
   }
 
-  currentTrips.push(result.trip);
+  currentTrips.push(trip);
 
   document.getElementById('trip-wizard').style.display = 'none';
   document.getElementById('trip-home').style.display = 'block';
@@ -1198,24 +1219,24 @@ function buildBrokerConfirmCard() {
 }
 
 async function confirmBrokerTrip() {
-  const result = await TFP.api('/api/broker-trips', {
-    method: 'POST',
-    body: {
+  let trip;
+  try {
+    trip = await FS.add(uid, 'brokerTrips', {
       company: bwizard.company,
       owner: bwizard.owner,
       vehicleNumber: bwizard.vehicleNumber,
       from: bwizard.from,
       to: bwizard.to,
       purchase: bwizard.purchase,
-      sell: bwizard.sell
-    }
-  });
-  if (!result.success) {
-    showToast(result.message || 'Could not register this brokered trip.', 'error');
+      sell: bwizard.sell,
+      date: new Date().toISOString()
+    });
+  } catch (err) {
+    showToast(err.message || 'Could not register this brokered trip.', 'error');
     return;
   }
 
-  currentBrokerTrips.push(result.trip);
+  currentBrokerTrips.push(trip);
   showToast('Brokered trip registered successfully!');
   cancelBrokerWizard();
   renderBrokerList();
@@ -1303,60 +1324,6 @@ function renderAccountDetails() {
 }
 
 /* ════════════════════════════════════════════
-   CHANGE PASSWORD
-════════════════════════════════════════════ */
-async function handleChangePassword(e) {
-  e.preventDefault();
-  const cur  = document.getElementById('pw-current').value;
-  const nw   = document.getElementById('pw-new').value;
-  const conf = document.getElementById('pw-confirm').value;
-
-  if (nw !== conf)                         { showFormError('pw-error','❌ New passwords do not match.'); return; }
-  const pwError = TFP.passwordError(nw);
-  if (pwError)                             { showFormError('pw-error', `❌ ${pwError}`); return; }
-
-  try {
-    const result = await TFP.api('/api/auth/change-password', {
-      method: 'POST',
-      body: { currentPassword: cur, newPassword: nw }
-    });
-    if (!result.success) {
-      showFormError('pw-error', `❌ ${result.message || 'Could not change your password.'}`);
-      return;
-    }
-
-    document.getElementById('form-change-password').reset();
-    showToast('Password changed successfully! Please log in again.', 'success');
-    
-    // Log out directly without prompt
-    TFP.clearSession();
-    
-    // Create beautiful logout overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'logout-overlay';
-    overlay.innerHTML = `
-      <div class="logout-content">
-        <div class="lo-icon">🔒</div>
-        <h2 class="lo-title">Password Changed</h2>
-        <p class="lo-subtitle">Securely logging you out...</p>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-
-    // Trigger animation
-    setTimeout(() => overlay.classList.add('show'), 50);
-
-    // Redirect after animation completes
-    setTimeout(() => {
-      location.href = 'index.html';
-    }, 2500);
-
-  } catch (error) {
-    showFormError('pw-error', `❌ Error: ${error.message}`);
-  }
-}
-
-/* ════════════════════════════════════════════
    NOTIFICATIONS MODAL
 ════════════════════════════════════════════ */
 function renderNotifications() {
@@ -1387,16 +1354,28 @@ async function handleDeleteRequest(e) {
     return;
   }
   
-  // 1. Delete the account server-side (cascades vehicles, drivers, trips,
-  //    brokered trips and notifications — see backend/db.js's foreign keys)
-  const result = await TFP.api('/api/auth/account', { method: 'DELETE' });
-  if (!result.success) {
-    showToast(result.message || 'Could not delete your account.', 'error');
+  // 1. Delete all of this account's Firestore data (subcollections, then the
+  //    profile doc itself), then delete the Firebase Auth account.
+  try {
+    const subcollections = ['vehicles', 'drivers', 'trips', 'brokerTrips', 'notifications'];
+    for (const name of subcollections) {
+      const snap = await FS.col(uid, name).get();
+      const batch = FS.db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    await FS.userDoc(uid).delete();
+    await FS.auth.currentUser.delete();
+  } catch (err) {
+    if (err.code === 'auth/requires-recent-login') {
+      showToast('Please sign in again, then retry deleting your account.', 'error');
+      await FS.signOut();
+      location.href = 'index.html';
+      return;
+    }
+    showToast(err.message || 'Could not delete your account.', 'error');
     return;
   }
-
-  // 2. Clear session
-  TFP.clearSession();
 
   // 4. UI Feedback
   closeSubModal('delete-account');
@@ -1429,7 +1408,7 @@ async function handleDeleteRequest(e) {
 async function handleLogout() {
   const confirmed = await asyncConfirm('Sign out from TruckFleet Pro?');
   if (!confirmed) return;
-  TFP.clearSession();
+  await FS.signOut();
 
   // Create beautiful logout overlay
   const overlay = document.createElement('div');
@@ -1474,7 +1453,7 @@ function closeSubModalOnOverlay(e, type) {
 
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  ['account-details','change-role','appearance','change-password','notifications','help','delete-account','salary'].forEach(t => closeSubModal(t));
+  ['account-details','change-role','appearance','notifications','help','delete-account','salary'].forEach(t => closeSubModal(t));
   closeSideMenu();
 });
 
@@ -1597,17 +1576,19 @@ async function handleSaveSalary(e) {
   
   if (!driverId || !amount) return;
 
-  const result = await TFP.api(`/api/drivers/${driverId}/salary`, { method: 'PATCH', body: { amount: Number(amount) } });
-  if (!result.success) {
-    showToast(result.message || 'Could not save this salary.', 'error');
+  const salaryData = { lastSalary: Number(amount), lastSalaryDate: new Date().toISOString(), isSalaryPaid: false };
+  try {
+    await FS.update(uid, 'drivers', driverId, salaryData);
+  } catch (err) {
+    showToast(err.message || 'Could not save this salary.', 'error');
     return;
   }
 
   const idx = currentDrivers.findIndex(d => d.id === driverId);
-  if (idx > -1) currentDrivers[idx] = result.driver;
+  if (idx > -1) Object.assign(currentDrivers[idx], salaryData);
 
   closeSubModal('salary');
-  showToast(`Salary of ₹${amount} saved for ${result.driver.name}!`, 'success');
+  showToast(`Salary of ₹${amount} saved for ${currentDrivers[idx] ? currentDrivers[idx].name : 'Driver'}!`, 'success');
   
   document.getElementById('salary-search-input').value = '';
   currentSalarySearchQuery = '';
@@ -1684,14 +1665,15 @@ async function toggleSalaryPaid(driverId) {
   const driver = currentDrivers.find(d => d.id === driverId);
   if (!driver) return;
 
-  const result = await TFP.api(`/api/drivers/${driverId}/salary-status`, { method: 'PATCH' });
-  if (!result.success) {
-    showToast(result.message || 'Could not update salary status.', 'error');
+  const nextPaid = !driver.isSalaryPaid;
+  try {
+    await FS.update(uid, 'drivers', driverId, { isSalaryPaid: nextPaid });
+  } catch (err) {
+    showToast(err.message || 'Could not update salary status.', 'error');
     renderSalaryStatus(); // revert the checkbox's optimistic UI state
     return;
   }
-  const idx = currentDrivers.findIndex(d => d.id === driverId);
-  currentDrivers[idx] = result.driver;
+  driver.isSalaryPaid = nextPaid;
 
   const card = document.getElementById(`statcard-${driverId}`);
   if (card) {
@@ -1702,10 +1684,10 @@ async function toggleSalaryPaid(driverId) {
     // Wait for the visual effect, then re-render the list to sort it
     setTimeout(() => {
       renderSalaryStatus();
-      if (result.driver.isSalaryPaid) {
-         showToast(`Marked as paid for ${result.driver.name}`, 'success');
+      if (driver.isSalaryPaid) {
+         showToast(`Marked as paid for ${driver.name}`, 'success');
       } else {
-         showToast(`Marked as pending for ${result.driver.name}`, 'info');
+         showToast(`Marked as pending for ${driver.name}`, 'info');
       }
     }, 400); // 400ms delay for smoothness
   } else {

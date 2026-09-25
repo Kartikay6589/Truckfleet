@@ -4,20 +4,17 @@
 
 let currentUser = null;
 let tripData = null;
+let uid = null;
 
 /* ── Initialization ── */
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!TFP.isLoggedIn()) {
+  const user = await FS.waitForUser();
+  if (!user) {
     location.href = 'index.html';
     return;
   }
-
-  const me = await TFP.api('/api/auth/me');
-  if (!me.success) {
-    if (me.status !== 401) { TFP.clearSession(); location.href = 'index.html'; }
-    return;
-  }
-  currentUser = me.user;
+  uid = user.uid;
+  currentUser = Object.assign({ id: uid }, await FS.getUserProfile(uid));
 
   await loadBrokeredTrip();
   initTheme();
@@ -37,12 +34,12 @@ async function loadBrokeredTrip() {
     return;
   }
 
-  const result = await TFP.api(`/api/broker-trips/${tripId}`);
-  if (!result.success) {
+  const trips = await FS.getAll(uid, 'brokerTrips');
+  tripData = trips.find(t => t.id === tripId);
+  if (!tripData) {
     showError(loading, errorEl);
     return;
   }
-  tripData = result.trip;
 
   loading.style.display = 'none';
   content.style.display = 'flex';
