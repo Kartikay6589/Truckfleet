@@ -6,10 +6,19 @@ const express = require('express');
 const cors = require('cors');
 const twilio = require('twilio');
 
-require('./db'); // creates tables on first run
+const db = require('./db');
 
 const app = express();
-app.use(cors());
+
+// The frontend (Vercel) and this API (Render) live on different domains, so
+// CORS has to explicitly allow the frontend's origin. Set CORS_ORIGIN to your
+// Vercel URL (e.g. https://your-app.vercel.app) in production; comma-separate
+// multiple origins. Defaults to "*" (fine here — auth uses a bearer token,
+// not cookies, so an open CORS policy doesn't expose sessions to other sites).
+const allowedOrigins = (process.env.CORS_ORIGIN || '*').split(',').map(s => s.trim());
+app.use(cors({
+  origin: allowedOrigins.includes('*') ? true : allowedOrigins
+}));
 app.use(express.json());
 
 /* ── Twilio (SMS OTP) ── */
@@ -89,10 +98,29 @@ app.use('/api/trips', require('./routes/trips'));
 app.use('/api/broker-trips', require('./routes/brokerTrips'));
 app.use('/api/notifications', require('./routes/notifications'));
 
-/* ── Serve the frontend static files from the parent directory ── */
+/* ── Serve the frontend static files from the parent directory ──
+   Handy for local dev (one server, one origin). In production the frontend
+   is deployed separately on Vercel, so this is just a convenience fallback. */
 app.use(express.static(path.join(__dirname, '..')));
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
+/* ── JSON error handler ──
+   Any route above that throws (e.g. a database error) lands here instead of
+   Express's default HTML error page. Keeps the API's contract — every
+   response is JSON with a `success` field — and never leaks a stack trace. */
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ success: false, message: 'Something went wrong on the server. Please try again.' });
 });
+
+const PORT = process.env.PORT || 3000;
+
+db.ready()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Backend server running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Could not connect to the database. Check DATABASE_URL in backend/.env:', err.message);
+    process.exit(1);
+  });

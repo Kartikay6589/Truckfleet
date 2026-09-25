@@ -1,15 +1,9 @@
 # Dependencies
 node_modules/
 
-# Secrets — never commit real Twilio credentials or the JWT signing secret
+# Secrets — never commit the Supabase connection string, Twilio credentials,
+# or the JWT signing secret
 backend/.env
-
-# SQLite database and its WAL/SHM sidecar files — this is real user data,
-# not something to check into source control
-backend/*.db
-backend/*.db-journal
-backend/*.db-wal
-backend/*.db-shm
 
 # OS / editor cruft
 .DS_Store

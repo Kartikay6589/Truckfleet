@@ -1,20 +1,30 @@
 /* ════════════════════════════════════════════
    TRUCKFLEET PRO — database layer
-   SQLite file, one row per real record. Every table (except users)
-   carries a user_id so each account only ever sees its own data.
+   Postgres (Supabase). Every table (except users) carries a user_id so
+   each account only ever sees its own data.
 ════════════════════════════════════════════ */
-const path = require('path');
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
 
-// On most hosts, disk written outside a mounted volume is wiped on every
-// redeploy. Set DB_PATH (e.g. to a mounted volume like /data/truckfleet.db)
-// in production; it defaults to a file next to this script for local dev.
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'truckfleet.db');
-const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL is not set in backend/.env — copy your connection string ' +
+    'from Supabase (Project Settings → Database → Connection string → URI) and add it.'
+  );
+}
 
-db.exec(`
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // Supabase requires SSL; its certificate isn't in Node's default trust
+  // store, so this trusts it without pinning the cert chain (fine for this
+  // app — the connection is still encrypted, just not certificate-verified).
+  ssl: { rejectUnauthorized: false }
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected Postgres pool error:', err);
+});
+
+const schema = `
   CREATE TABLE IF NOT EXISTS users (
     id            TEXT PRIMARY KEY,
     first_name    TEXT NOT NULL,
@@ -42,9 +52,9 @@ db.exec(`
     user_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name             TEXT NOT NULL,
     license          TEXT NOT NULL,
-    last_salary      REAL,
+    last_salary      DOUBLE PRECISION,
     last_salary_date TEXT,
-    is_salary_paid   INTEGER NOT NULL DEFAULT 0,
+    is_salary_paid   BOOLEAN NOT NULL DEFAULT false,
     added_at         TEXT NOT NULL,
     UNIQUE(user_id, license)
   );
@@ -58,20 +68,20 @@ db.exec(`
     from_loc       TEXT NOT NULL,
     to_loc         TEXT NOT NULL,
     cycle_origin   TEXT,
-    original_total REAL NOT NULL,
-    tds_percent    REAL NOT NULL DEFAULT 0,
-    tds_amount     REAL NOT NULL DEFAULT 0,
+    original_total DOUBLE PRECISION NOT NULL,
+    tds_percent    DOUBLE PRECISION NOT NULL DEFAULT 0,
+    tds_amount     DOUBLE PRECISION NOT NULL DEFAULT 0,
     gst_type       TEXT NOT NULL DEFAULT 'NILL',
-    gst_percent    REAL NOT NULL DEFAULT 0,
-    gst_amount     REAL NOT NULL DEFAULT 0,
-    total          REAL NOT NULL,
-    advance        REAL NOT NULL DEFAULT 0,
-    balance        REAL NOT NULL,
-    paid           INTEGER NOT NULL DEFAULT 0,
+    gst_percent    DOUBLE PRECISION NOT NULL DEFAULT 0,
+    gst_amount     DOUBLE PRECISION NOT NULL DEFAULT 0,
+    total          DOUBLE PRECISION NOT NULL,
+    advance        DOUBLE PRECISION NOT NULL DEFAULT 0,
+    balance        DOUBLE PRECISION NOT NULL,
+    paid           BOOLEAN NOT NULL DEFAULT false,
     paid_at        TEXT,
-    fuel_expense   REAL NOT NULL DEFAULT 0,
-    toll_expense   REAL NOT NULL DEFAULT 0,
-    driver_expense REAL NOT NULL DEFAULT 0,
+    fuel_expense   DOUBLE PRECISION NOT NULL DEFAULT 0,
+    toll_expense   DOUBLE PRECISION NOT NULL DEFAULT 0,
+    driver_expense DOUBLE PRECISION NOT NULL DEFAULT 0,
     registered_at  TEXT NOT NULL
   );
 
@@ -83,8 +93,8 @@ db.exec(`
     vehicle_number TEXT NOT NULL,
     from_loc       TEXT NOT NULL,
     to_loc         TEXT NOT NULL,
-    purchase       REAL NOT NULL,
-    sell           REAL NOT NULL,
+    purchase       DOUBLE PRECISION NOT NULL,
+    sell           DOUBLE PRECISION NOT NULL,
     date           TEXT NOT NULL
   );
 
@@ -95,11 +105,22 @@ db.exec(`
     time    TEXT NOT NULL
   );
 
-  CREATE INDEX IF NOT EXISTS idx_vehicles_user   ON vehicles(user_id);
-  CREATE INDEX IF NOT EXISTS idx_drivers_user    ON drivers(user_id);
-  CREATE INDEX IF NOT EXISTS idx_trips_user      ON trips(user_id);
-  CREATE INDEX IF NOT EXISTS idx_broker_user     ON broker_trips(user_id);
-  CREATE INDEX IF NOT EXISTS idx_notif_user      ON notifications(user_id);
-`);
+  CREATE INDEX IF NOT EXISTS idx_vehicles_user ON vehicles(user_id);
+  CREATE INDEX IF NOT EXISTS idx_drivers_user  ON drivers(user_id);
+  CREATE INDEX IF NOT EXISTS idx_trips_user    ON trips(user_id);
+  CREATE INDEX IF NOT EXISTS idx_broker_user   ON broker_trips(user_id);
+  CREATE INDEX IF NOT EXISTS idx_notif_user    ON notifications(user_id);
+`;
 
-module.exports = db;
+// Runs once at boot; safe to run every time the server starts (IF NOT EXISTS).
+let readyPromise = null;
+function ready() {
+  if (!readyPromise) readyPromise = pool.query(schema);
+  return readyPromise;
+}
+
+module.exports = {
+  pool,
+  ready,
+  query: (text, params) => pool.query(text, params)
+};

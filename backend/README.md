@@ -1,11 +1,14 @@
 # TruckFleet Pro — Backend
 
 A real multi-user backend: every account's vehicles, drivers, trips and
-brokered trips live in a shared SQLite database on this server, not in each
-visitor's browser. Anyone who signs up gets their own account; nobody can see
-or modify another account's data.
+brokered trips live in a shared **Supabase (Postgres) database**, not in
+each visitor's browser. Anyone who signs up gets their own account; nobody
+can see or modify another account's data.
 
-## Setup
+Deployment shape: **frontend on Vercel, backend on Render, database on
+Supabase** — three separate services, each doing one job.
+
+## Setup (local development)
 
 ```bash
 cd backend
@@ -13,17 +16,26 @@ npm install
 cp .env.example .env
 ```
 
-Open `.env` and set `JWT_SECRET` to a random value:
+### 1. Create a Supabase project
+
+Go to [supabase.com](https://supabase.com) → New Project (free tier is
+fine). Once it's created, go to **Project Settings → Database → Connection
+string → URI**, copy it, and paste it into `.env` as `DATABASE_URL`
+(fill in the password you set when creating the project).
+
+### 2. Generate a JWT secret
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
+Paste the output into `.env` as `JWT_SECRET`.
+
 Twilio settings are optional — leave the placeholder values and OTPs will be
 printed to the server console and shown on-screen in the browser instead of
 sent by SMS (useful for local development).
 
-## Running
+## Running locally
 
 ```bash
 npm start          # node server.js
@@ -32,19 +44,46 @@ npm run dev        # same, but restarts on file changes (node --watch)
 
 The server listens on `PORT` (default `3000`) and serves both the API and
 the static frontend (the parent folder), so opening
-`http://localhost:3000/` in a browser gets you the whole app — no separate
-frontend server needed.
+`http://localhost:3000/` in a browser gets you the whole app for local
+testing — no separate frontend server needed. In production, the frontend
+is deployed separately (see below).
+
+## Deploying
+
+**Database — Supabase:** already hosted once you created the project above.
+Tables are created automatically the first time the server connects (see
+`db.js`) — no manual migration step needed.
+
+**Backend — Render:**
+1. Push this repo to GitHub.
+2. On [render.com](https://render.com), New → Web Service → connect the repo
+   (or use the included `render.yaml` as a Blueprint for one-click setup).
+3. Build command: `npm install`. Start command: `npm start`.
+4. Add environment variables: `DATABASE_URL`, `JWT_SECRET`, and once you know
+   your Vercel URL, `CORS_ORIGIN` (set it to that URL so the browser is
+   allowed to call this API cross-origin).
+5. Deploy — Render gives you a URL like `https://your-app.onrender.com`.
+
+**Frontend — Vercel:**
+1. On [vercel.com](https://vercel.com), New Project → import the same repo.
+   `vercel.json` at the repo root tells Vercel this is a static site (the
+   backend is deployed separately, so `.vercelignore` excludes it here).
+2. Before deploying, open `../site-config.js` and replace
+   `https://YOUR-BACKEND-NAME.onrender.com` with your actual Render URL from
+   the step above, then commit and push — Vercel redeploys automatically.
+3. Deploy — Vercel gives you a URL like `https://your-app.vercel.app`. Set
+   that as `CORS_ORIGIN` on Render (step above) if you haven't yet.
 
 ## Data
 
-- `truckfleet.db` (created automatically on first run, in this folder) — the
-  SQLite database. It's gitignored; don't commit it. Delete it to start with
-  a completely empty database (all accounts, vehicles, trips, etc. are lost).
 - Tables: `users`, `vehicles`, `drivers`, `trips`, `broker_trips`,
   `notifications` — see `db.js` for the schema. Every table except `users`
   has a `user_id` foreign key with `ON DELETE CASCADE`, so deleting an
   account cleans up all of its data automatically.
 - Passwords are hashed with bcrypt (`auth.js`) — never stored in plain text.
+- Browse/query the data directly in Supabase's dashboard under **Table
+  Editor**, or **SQL Editor** for custom queries — no separate DB client
+  needed.
 
 ## Authentication
 
@@ -91,8 +130,8 @@ All routes below except `/api/auth/signup`, `/api/auth/login`,
 
 ```
 backend/
-  server.js       — Express app, mounts routes, serves the static frontend
-  db.js           — SQLite connection + schema (creates tables if missing)
+  server.js       — Express app, mounts routes, serves the static frontend (local dev)
+  db.js           — Postgres connection pool + schema (creates tables if missing)
   auth.js         — password hashing, JWT signing/verification, requireAuth middleware
   serialize.js    — DB row → camelCase JSON (what the frontend expects)
   notify.js       — creates notifications, trims history to 25 per user

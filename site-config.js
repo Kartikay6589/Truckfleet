@@ -10,7 +10,15 @@ window.TFP_CONFIG = {
   supportEmail: 'crazytyagi01@gmail.com',
   supportPhone: '+91 9971690250',
   countryCode: '+91',            // prefixed to 10-digit phone numbers for SMS OTP
-  apiBaseUrl: '',                // '' = same server that serves the site (backend/server.js)
+
+  // Where the backend API lives. On localhost this is '' (relative — the
+  // Express server serves both the site and the API from one origin during
+  // local dev). Once deployed, the frontend (Vercel) and backend (Render)
+  // are on different domains, so this must be the Render URL.
+  // ↓↓↓ Replace this with your own Render backend URL after deploying it ↓↓↓
+  apiBaseUrl: (typeof location !== 'undefined' && ['localhost', '127.0.0.1'].includes(location.hostname))
+    ? ''
+    : 'https://YOUR-BACKEND-NAME.onrender.com',
   passwordMinLength: 10,         // used by sign up, change password and reset password
   passwordNeedsUppercase: true,
   allowedEmailDomain: 'gmail.com', // only accept this domain at sign up; '' = any valid email
