@@ -1,9 +1,8 @@
 # Dependencies
 node_modules/
 
-# Secrets — never commit the Supabase connection string, Twilio credentials,
-# or the JWT signing secret
-backend/.env
+# Firebase CLI's local deploy cache — machine-specific, not source
+.firebase/
 
 # OS / editor cruft
 .DS_Store
