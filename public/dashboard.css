@@ -1402,6 +1402,16 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   .quick-actions{grid-template-columns:1fr 1fr;}
   .avp-fields{grid-template-columns:1fr 1fr;}
 }
+/* Tablets (iPad etc.) are touch devices — hover never fires, so the
+   "hover to expand and reveal labels" rail would stay icon-only forever
+   with no way to see what each icon means. Keep it expanded by default in
+   this range instead of relying on hover. */
+@media(min-width:769px) and (max-width:1100px){
+  .left-nav{ width:var(--nav-w); }
+  .nav-inner{ width:var(--nav-w); }
+  .left-nav-item{ padding:.85rem; gap:.75rem; }
+  .lni-label{ opacity:1; width:130px; pointer-events:auto; }
+}
 @media(max-width:768px){
   /* The old off-canvas sidebar had no button that ever opened it, making
      the main nav (Dashboard/Vehicles/Drivers/...) unreachable on phones.

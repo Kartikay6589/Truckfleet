@@ -954,22 +954,29 @@ button:hover ~ .cursor-circle,
 }
 
 @media (max-width:768px) {
-  .nav-links, .nav-actions { display:none; }
+  /* The dropdown used to position nav-links and nav-actions independently,
+     with nav-actions guessing a fixed 200px offset for where nav-links'
+     content ends. Real content height on an actual phone never matched that
+     guess, so the theme toggle/Sign In button would overlap the nav links.
+     Fix: let the navbar wrap and grow with its real content — no guessing,
+     nothing can ever overlap regardless of how tall the menu gets. */
+  .nav-container { flex-wrap:wrap; }
   .hamburger { display:flex; }
-  .nav-links.open {
+  .nav-links, .nav-actions { display:none; width:100%; }
+  .nav-links.open, .nav-actions.open {
     display:flex; flex-direction:column;
-    position:absolute; top:100%; left:0; right:0;
     background:var(--navbar-bg); backdrop-filter:blur(20px);
-    padding:2rem; gap:1.5rem;
-    border-bottom:1px solid var(--border-color);
     animation:fadeInUp 0.3s ease-out;
+  }
+  .nav-links.open {
+    order:3; padding:1.5rem 2rem 1rem; gap:1.25rem;
   }
   .nav-actions.open {
-    display:flex; position:absolute; top:calc(100% + 200px); left:0; right:0;
-    background:var(--navbar-bg); backdrop-filter:blur(20px);
-    padding:0 2rem 2rem; gap:1rem;
-    animation:fadeInUp 0.3s ease-out;
+    order:4; flex-direction:row; align-items:center;
+    padding:0 2rem 1.5rem; gap:1rem;
+    border-bottom:1px solid var(--border-color);
   }
+  .nav-actions.open .btn { flex:1; justify-content:center; }
   .features-grid { grid-template-columns:1fr; }
   .steps-grid { grid-template-columns:1fr; }
   .footer-grid { grid-template-columns:1fr; }
