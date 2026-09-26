@@ -100,6 +100,22 @@ body{
   transition:background var(--t-m),color var(--t-m);
 }
 
+/* ── Loading screen (shown until real user data replaces this HTML's
+   placeholder values, so nobody sees "Rajesh" flash before their own name) ── */
+body.app-loading .topbar, body.app-loading .app-layout { visibility:hidden; }
+.app-loading-screen{
+  position:fixed; inset:0; z-index:99999;
+  display:none; align-items:center; justify-content:center;
+  background:var(--bg);
+}
+body.app-loading .app-loading-screen{ display:flex; }
+.app-loading-spinner{
+  width:44px; height:44px; border-radius:50%;
+  border:3px solid var(--border); border-top-color:var(--accent);
+  animation:appLoadingSpin 0.8s linear infinite;
+}
+@keyframes appLoadingSpin{ to{ transform:rotate(360deg); } }
+
 /* ── Custom Scrollbar (HIDDEN GLOBALLY) ── */
 *::-webkit-scrollbar { display: none !important; }
 * { -ms-overflow-style: none !important; scrollbar-width: none !important; }

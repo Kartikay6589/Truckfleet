@@ -12,7 +12,14 @@
   <link rel="stylesheet" href="custom-select.css" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
-<body>
+<body class="app-loading">
+
+  <!-- Shown until Firebase confirms who's signed in and their data has
+       loaded — without this, the page would briefly flash the placeholder
+       name/values baked into this HTML before real data replaces them. -->
+  <div class="app-loading-screen" id="app-loading-screen">
+    <div class="app-loading-spinner"></div>
+  </div>
 
   <div class="cursor-circle" id="cursor-circle"></div>
   <div class="cursor-dot"    id="cursor-dot"></div>

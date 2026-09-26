@@ -44,9 +44,41 @@ window.FS = {
   },
 
   async signInWithGoogle() {
+    await fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     const result = await fbAuth.signInWithPopup(googleProvider);
     await this.ensureUserProfile(result.user);
     return result.user;
+  },
+
+  /* Email/password sign-up. Creates the Firebase Auth account and the
+     Firestore profile document together — if either step fails, script.js
+     shows the error and the user can just try again. */
+  async signUpWithEmail({ firstName, lastName, email, password }) {
+    const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
+    const user = cred.user;
+    try { await user.updateProfile({ displayName: `${firstName} ${lastName}`.trim() }); } catch (e) {}
+    const profile = {
+      firstName, lastName, email, phone: '', photoURL: '',
+      role: 'fleet-owner', createdAt: new Date().toISOString()
+    };
+    await this.userDoc(user.uid).set(profile);
+    return user;
+  },
+
+  /* Email/password sign-in. "Remember me" unchecked → session-only
+     (cleared when the browser closes) instead of persisting indefinitely. */
+  async signInWithEmail(email, password, remember = true) {
+    await fbAuth.setPersistence(remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION);
+    const cred = await fbAuth.signInWithEmailAndPassword(email, password);
+    const profile = await this.ensureUserProfile(cred.user);
+    return {
+      uid: cred.user.uid, email: cred.user.email, displayName: cred.user.displayName,
+      firstName: profile.firstName, lastName: profile.lastName
+    };
+  },
+
+  async sendPasswordReset(email) {
+    await fbAuth.sendPasswordResetEmail(email);
   },
 
   async signOut() {

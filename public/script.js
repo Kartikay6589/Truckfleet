@@ -193,6 +193,24 @@ function closeModal(type) {
   document.body.style.overflow = '';
 }
 function closeModalOnOverlay(e, type) { if (e.target === e.currentTarget) closeModal(type); }
+function switchModal(toType) {
+  const from = toType === 'signup' ? 'signin' : 'signup';
+  closeModal(from);
+  setTimeout(() => openModal(toType), 200);
+}
+
+/* ---- Password Toggle ---- */
+window.togglePasswordVisibility = function(inputId, toggleBtnId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(toggleBtnId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁️';
+  }
+};
 
 /* ---- Custom Animated Error Modal ---- */
 window.showAnimatedError = function(message) {
@@ -236,8 +254,10 @@ window.closeCustomError = function() {
 };
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  const authModal = document.getElementById('modal-auth');
-  if (authModal && authModal.classList.contains('active')) closeModal('auth');
+  ['signin', 'signup'].forEach(t => {
+    const m = document.getElementById(`modal-${t}`);
+    if (m && m.classList.contains('active')) closeModal(t);
+  });
   closeCustomError();
 });
 
@@ -253,34 +273,134 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.classList.remove('show'), 3500);
 }
 
-/* ---- Google Sign-In ---- */
+function showFormError(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4500);
+}
+
+/* Turns a Firebase Auth error code into something a user can actually act on */
+function friendlyAuthError(err) {
+  const map = {
+    'auth/email-already-in-use': 'An account with that email already exists. Try signing in instead.',
+    'auth/invalid-email': 'Please enter a valid email address.',
+    'auth/weak-password': 'Password should be at least 6 characters.',
+    'auth/user-not-found': 'No account found with that email. Please sign up.',
+    'auth/wrong-password': 'Incorrect password.',
+    'auth/invalid-credential': 'Incorrect email or password.',
+    'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+    'auth/network-request-failed': 'Network error. Check your connection and try again.',
+    'auth/popup-closed-by-user': '',
+    'auth/cancelled-popup-request': ''
+  };
+  return map[err.code] !== undefined ? map[err.code] : (err.message || 'Something went wrong. Please try again.');
+}
+
+function showWelcomeOverlay(firstName, redirect = true) {
+  const overlay = document.createElement('div');
+  overlay.className = 'welcome-overlay';
+  overlay.innerHTML = `
+    <div class="welcome-content">
+      <div class="wc-icon">🚀</div>
+      <h2 class="wc-title">Welcome, ${TFP.esc(firstName)}!</h2>
+      <p class="wc-subtitle">Launching your TruckFleet Pro Dashboard...</p>
+      <div class="wc-loader"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.classList.add('show'), 10);
+  if (redirect) setTimeout(() => location.href = 'dashboard.html', 1800);
+}
+
+/* ---- Google Sign-In (used by both the Sign In and Sign Up modals) ---- */
 async function continueWithGoogle() {
-  const btn = document.getElementById('btn-google-signin');
+  const openType = ['signin', 'signup'].find(t => document.getElementById(`modal-${t}`).classList.contains('active'));
+  const btn = document.getElementById(openType === 'signup' ? 'btn-google-signup' : 'btn-google-signin');
   if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
 
   try {
     const user = await FS.signInWithGoogle();
-    closeModal('auth');
-
-    const overlay = document.createElement('div');
-    overlay.className = 'welcome-overlay';
-    overlay.innerHTML = `
-      <div class="welcome-content">
-        <div class="wc-icon">🚀</div>
-        <h2 class="wc-title">Welcome, ${TFP.esc((user.displayName || 'there').split(' ')[0])}!</h2>
-        <p class="wc-subtitle">Launching your TruckFleet Pro Dashboard...</p>
-        <div class="wc-loader"></div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    setTimeout(() => overlay.classList.add('show'), 10);
-    setTimeout(() => location.href = 'dashboard.html', 2000);
+    if (openType) closeModal(openType);
+    showWelcomeOverlay((user.displayName || 'there').split(' ')[0]);
   } catch (err) {
-    if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-      showAnimatedError(err.message || 'Could not sign in with Google. Please try again.');
-    }
+    const msg = friendlyAuthError(err);
+    if (msg) showAnimatedError(msg);
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = '<span class="google-icon">G</span> Continue with Google'; }
+  }
+}
+
+/* ---- Sign Up (email/password) ---- */
+async function handleSignUp(e) {
+  e.preventDefault();
+  const firstName = document.getElementById('signup-firstname').value.trim();
+  const lastName = document.getElementById('signup-lastname').value.trim();
+  const email = document.getElementById('signup-email').value.trim().toLowerCase();
+  const password = document.getElementById('signup-password').value;
+  const terms = document.getElementById('signup-terms').checked;
+
+  if (!firstName) { showAnimatedError('First name is mandatory. Please enter your first name.'); return; }
+  if (!lastName) { showAnimatedError('Last name is mandatory. Please enter your last name.'); return; }
+  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) { showAnimatedError('Please enter a valid email address.'); return; }
+  if (password.length < 8) { showAnimatedError('Password must be at least 8 characters long.'); return; }
+  if (!terms) { showAnimatedError('You must agree to the Terms & Conditions.'); return; }
+
+  const submitBtn = document.getElementById('btn-submit-signup');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Creating account...';
+
+  try {
+    const user = await FS.signUpWithEmail({ firstName, lastName, email, password });
+    closeModal('signup');
+    showWelcomeOverlay(firstName);
+  } catch (err) {
+    const msg = friendlyAuthError(err);
+    if (msg) showAnimatedError(msg);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Create Account <span class="btn-arrow">→</span>';
+  }
+}
+
+/* ---- Sign In (email/password) ---- */
+async function handleSignIn(e) {
+  e.preventDefault();
+  const email = document.getElementById('signin-email').value.trim().toLowerCase();
+  const password = document.getElementById('signin-password').value;
+  const remember = document.getElementById('signin-remember').checked;
+
+  if (!email || !password) { showFormError('signin-error', '⚠️ Please enter your email and password.'); return; }
+
+  const submitBtn = document.getElementById('btn-submit-signin');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Signing in...';
+
+  try {
+    const user = await FS.signInWithEmail(email, password, remember);
+    closeModal('signin');
+    showWelcomeOverlay(user.firstName || (user.displayName || 'there').split(' ')[0]);
+  } catch (err) {
+    showFormError('signin-error', `❌ ${friendlyAuthError(err)}`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Sign In <span class="btn-arrow">→</span>';
+  }
+}
+
+/* ---- Forgot password ---- */
+async function handleForgotPassword() {
+  const email = document.getElementById('signin-email').value.trim().toLowerCase();
+  if (!email) {
+    showFormError('signin-error', '⚠️ Enter your email above first, then click "Forgot password?".');
+    return;
+  }
+  try {
+    await FS.sendPasswordReset(email);
+    showToast(`Password reset link sent to ${email}`, 'success');
+  } catch (err) {
+    showFormError('signin-error', `❌ ${friendlyAuthError(err)}`);
   }
 }
 

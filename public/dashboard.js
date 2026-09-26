@@ -49,6 +49,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Actually initialize the dynamic names and dates
   initDashboard();
+
+  // Real data is in and rendered — safe to reveal the page now
+  document.body.classList.remove('app-loading');
 });
 
 /* ── State helpers — currentX arrays are the local cache; every mutation
