@@ -185,11 +185,15 @@ document.querySelectorAll('.truck-card').forEach(card => {
 
 /* ---- Modal logic ---- */
 function openModal(type) {
-  document.getElementById(`modal-${type}`).classList.add('active');
+  const m = document.getElementById(`modal-${type}`);
+  if (!m) return;
+  m.classList.add('active');
   document.body.style.overflow = 'hidden';
 }
 function closeModal(type) {
-  document.getElementById(`modal-${type}`).classList.remove('active');
+  const m = document.getElementById(`modal-${type}`);
+  if (!m) return;
+  m.classList.remove('active');
   document.body.style.overflow = '';
 }
 function closeModalOnOverlay(e, type) { if (e.target === e.currentTarget) closeModal(type); }
@@ -316,7 +320,7 @@ function showWelcomeOverlay(firstName, redirect = true) {
 
 /* ---- Google Sign-In (used by both the Sign In and Sign Up modals) ---- */
 async function continueWithGoogle() {
-  const openType = ['signin', 'signup'].find(t => document.getElementById(`modal-${t}`).classList.contains('active'));
+  const openType = ['signin', 'signup'].find(t => document.getElementById(`modal-${t}`)?.classList.contains('active'));
   const btn = document.getElementById(openType === 'signup' ? 'btn-google-signup' : 'btn-google-signin');
   if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
 
