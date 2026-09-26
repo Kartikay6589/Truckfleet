@@ -451,15 +451,50 @@ async function handleAddVehicle(e) {
   showToast(`Vehicle ${number} added!`, 'success');
 }
 
+/* A vehicle's category groups all Container Truck subtypes (e.g. "Container -
+   SXL 32ft") under one "Container Truck" bucket, since the subtype is really
+   a detail of the category rather than a category of its own. */
+function vehicleCategoryOf(v) {
+  return v.vehicleType && v.vehicleType.startsWith('Container') ? 'Container Truck' : (v.vehicleType || 'Unknown');
+}
+
+/* Keeps the category filter's option list in sync with whatever categories
+   actually exist, without losing the user's current selection. */
+function populateVehicleCategoryFilter() {
+  const sel = document.getElementById('veh-category-filter');
+  if (!sel) return;
+  const current = sel.value;
+  const categories = [...new Set(getVehicles().map(vehicleCategoryOf))].sort();
+  sel.innerHTML = '<option value="">All Categories</option>' +
+    categories.map(c => `<option value="${TFP.esc(c)}">${TFP.esc(c)}</option>`).join('');
+  if (categories.includes(current)) sel.value = current;
+
+  // custom-select.js replaces this <select> with its own dropdown UI at page
+  // load, from whatever options existed then — refresh it now so newly
+  // discovered categories actually show up in the visible dropdown, not just
+  // the hidden native <select>.
+  if (window.refreshCustomSelect) refreshCustomSelect(sel);
+}
+
+function getFilteredVehicles() {
+  const filter = document.getElementById('veh-category-filter')?.value || '';
+  const vehicles = getVehicles();
+  return filter ? vehicles.filter(v => vehicleCategoryOf(v) === filter) : vehicles;
+}
+
 /* ── Render vehicles table ── */
 function renderVehiclesTable() {
-  const vehicles = getVehicles();
+  populateVehicleCategoryFilter();
+  const all      = getVehicles();
+  const vehicles = getFilteredVehicles();
   const tbody    = document.getElementById('vehicles-tbody');
   const count    = document.getElementById('vtw-count');
-  count.textContent = `${vehicles.length} vehicle${vehicles.length !== 1 ? 's' : ''} registered`;
+  count.textContent = vehicles.length === all.length
+    ? `${all.length} vehicle${all.length !== 1 ? 's' : ''} registered`
+    : `${vehicles.length} of ${all.length} vehicle${all.length !== 1 ? 's' : ''} shown`;
 
   if (vehicles.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">No vehicles registered yet. Click "Add Vehicle" to get started.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">${all.length === 0 ? 'No vehicles registered yet. Click "Add Vehicle" to get started.' : 'No vehicles in this category.'}</td></tr>`;
     return;
   }
   tbody.innerHTML = vehicles.map((v, i) => `
@@ -473,6 +508,52 @@ function renderVehiclesTable() {
       <td><button class="btn-del" onclick="deleteVehicle('${v.id}')" title="Delete">🗑️</button></td>
     </tr>
   `).join('');
+}
+
+/* ── Export the vehicles currently shown (respects the category filter) to a
+   real .xlsx file via SheetJS. Vehicle Number is forced to a text cell so
+   Excel can't reinterpret plates like "0587KL12" as a number and strip the
+   leading zero. ── */
+function exportVehiclesToExcel() {
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel export library failed to load. Check your connection and try again.', 'error');
+    return;
+  }
+  const vehicles = getFilteredVehicles();
+  if (vehicles.length === 0) {
+    showToast('No vehicles to export.', 'error');
+    return;
+  }
+
+  const rows = vehicles.map((v, i) => ({
+    'S.No': i + 1,
+    'Vehicle Number': v.vehicleNumber,
+    'Owner Name': v.ownerName,
+    'Driver Name': v.driverName || 'N/A',
+    'Category': vehicleCategoryOf(v),
+    'Vehicle Type / Subtype': v.vehicleType,
+    'Registered On': new Date(v.addedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const vehicleNumberCol = 1; // 0-based: "Vehicle Number" is the 2nd column
+  for (let r = range.s.r + 1; r <= range.e.r; r++) {
+    const ref = XLSX.utils.encode_cell({ r, c: vehicleNumberCol });
+    if (ws[ref]) { ws[ref].t = 's'; ws[ref].z = '@'; }
+  }
+  ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 24 }, { wch: 14 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Vehicles');
+
+  const filterVal = document.getElementById('veh-category-filter')?.value || '';
+  const tag = filterVal ? filterVal.replace(/[^a-z0-9]+/gi, '-') : 'All';
+  const fileName = `TruckFleet-Vehicles-${tag}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+  XLSX.writeFile(wb, fileName);
+  showToast(`Exported ${vehicles.length} vehicle${vehicles.length !== 1 ? 's' : ''} to Excel.`, 'success');
 }
 
 async function deleteVehicle(id) {

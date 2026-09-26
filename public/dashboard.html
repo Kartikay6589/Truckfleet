@@ -281,6 +281,14 @@
         <div class="vehicles-table-wrap">
           <div class="vtw-toolbar">
             <span class="vtw-count" id="vtw-count">0 vehicles registered</span>
+            <div class="vtw-actions">
+              <select id="veh-category-filter" class="vtw-filter" onchange="renderVehiclesTable()" title="Filter by category">
+                <option value="">All Categories</option>
+              </select>
+              <button type="button" class="btn-export-excel" id="btn-export-vehicles" onclick="exportVehiclesToExcel()">
+                📊 Export to Excel
+              </button>
+            </div>
           </div>
           <table class="data-table" id="vehicles-table">
             <thead>
@@ -902,6 +910,9 @@
     <span class="toast-msg"  id="toast-msg">Success!</span>
   </div>
 
+
+  <!-- SheetJS — builds the .xlsx file for "Export to Excel" (vehicles table) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <!-- Firebase (Auth + Firestore) — must load before dashboard.js -->
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
