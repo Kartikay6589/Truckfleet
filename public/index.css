@@ -960,7 +960,10 @@ button:hover ~ .cursor-circle,
      guess, so the theme toggle/Sign In button would overlap the nav links.
      Fix: let the navbar wrap and grow with its real content — no guessing,
      nothing can ever overlap regardless of how tall the menu gets. */
-  .nav-container { flex-wrap:wrap; }
+  /* gap:0 here — .nav-container's base gap:1rem would otherwise leave a
+     visible seam between the wrapped rows below, with the hero content
+     showing through it (looked like a rendering glitch on a real phone). */
+  .nav-container { flex-wrap:wrap; gap:0; }
   .hamburger { display:flex; }
   .nav-links, .nav-actions { display:none; width:100%; }
   .nav-links.open, .nav-actions.open {
@@ -970,10 +973,11 @@ button:hover ~ .cursor-circle,
   }
   .nav-links.open {
     order:3; padding:1.5rem 2rem 1rem; gap:1.25rem;
+    border-top:1px solid var(--border-color);
   }
   .nav-actions.open {
     order:4; flex-direction:row; align-items:center;
-    padding:0 2rem 1.5rem; gap:1rem;
+    padding:1rem 2rem 1.5rem; gap:1rem;
     border-bottom:1px solid var(--border-color);
   }
   .nav-actions.open .btn { flex:1; justify-content:center; }
