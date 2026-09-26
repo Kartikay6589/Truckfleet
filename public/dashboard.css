@@ -674,6 +674,11 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   animation: slideIn 0.3s ease;
 }
 
+.salary-toolbar{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;
+  width:100%;max-width:800px;margin:1.5rem auto 0;
+}
+
 .salary-status-container {
   margin-top: 2rem;
   display: flex;
@@ -690,6 +695,8 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
   width: 100%;
   background: var(--bg-glass);
   border: 1px solid var(--border);
@@ -698,6 +705,7 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
   animation: slideIn 0.3s ease forwards;
 }
+.sd-status-group{ display:flex; align-items:center; gap:1.5rem; }
 .salary-status-card:hover {
   border-color: var(--accent);
 }
@@ -1510,7 +1518,7 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
 
   /* At the narrowest phones, keep the toolbar readable as two clear rows
      rather than squeezing the count and button onto one tight line. */
-  .vtw-toolbar{ flex-direction:column; align-items:stretch; }
+  .vtw-toolbar, .salary-toolbar{ flex-direction:column; align-items:stretch; }
   .btn-export-excel{ justify-content:center; }
 }
 

@@ -612,6 +612,40 @@ function renderDriversTable() {
   `).join('');
 }
 
+/* ── Export every registered driver (one row each) to a real .xlsx file. ── */
+function exportDriversToExcel() {
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel export library failed to load. Check your connection and try again.', 'error');
+    return;
+  }
+  const drivers = getDrivers();
+  if (drivers.length === 0) {
+    showToast('No drivers to export.', 'error');
+    return;
+  }
+
+  const rows = drivers.map((d, i) => ({
+    'S.No': i + 1,
+    'Driver Name': d.name,
+    'Driving License': d.license,
+    'Added On': new Date(d.addedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const licenseCol = 2; // 0-based: "Driving License" is the 3rd column
+  for (let r = range.s.r + 1; r <= range.e.r; r++) {
+    const ref = XLSX.utils.encode_cell({ r, c: licenseCol });
+    if (ws[ref]) { ws[ref].t = 's'; ws[ref].z = '@'; }
+  }
+  ws['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 18 }, { wch: 14 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Drivers');
+  XLSX.writeFile(wb, `TruckFleet-Drivers-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  showToast(`Exported ${drivers.length} driver${drivers.length !== 1 ? 's' : ''} to Excel.`, 'success');
+}
+
 async function deleteDriver(id) {
   const confirmed = await asyncConfirm('Remove this driver?');
   if (!confirmed) return;
@@ -1678,7 +1712,9 @@ function switchSalaryTab(tab) {
 function renderSalaryStatus() {
   const container = document.getElementById('salary-status-container');
   const drivers = getDrivers().filter(d => d.lastSalary);
-  
+  const count = document.getElementById('stw-count');
+  if (count) count.textContent = `${drivers.length} salar${drivers.length !== 1 ? 'ies' : 'y'} assigned`;
+
   if (drivers.length === 0) {
     container.innerHTML = '<div class="salary-empty">No salaries have been assigned yet. Go to Assign Salary to add one.</div>';
     return;
@@ -1703,7 +1739,7 @@ function renderSalaryStatus() {
             <div class="sd-license">${d.license}</div>
           </div>
         </div>
-        <div style="display:flex; align-items:center; gap: 1.5rem;">
+        <div class="sd-status-group">
           <div class="salary-status-amount">₹${d.lastSalary}</div>
           <label class="ss-checkbox-wrap">
             <input type="checkbox" class="ss-checkbox" ${isPaid ? 'checked' : ''} onclick="toggleSalaryPaid('${d.id}')">
@@ -1713,6 +1749,44 @@ function renderSalaryStatus() {
       </div>
     `;
   }).join('');
+}
+
+/* ── Export every driver with an assigned salary (one row each) to a real
+   .xlsx file. Driving License is forced to a text cell so Excel can't
+   mangle an all-numeric license into a number. ── */
+function exportSalaryToExcel() {
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel export library failed to load. Check your connection and try again.', 'error');
+    return;
+  }
+  const drivers = getDrivers().filter(d => d.lastSalary).sort((a, b) => a.name.localeCompare(b.name));
+  if (drivers.length === 0) {
+    showToast('No salaries to export.', 'error');
+    return;
+  }
+
+  const rows = drivers.map((d, i) => ({
+    'S.No': i + 1,
+    'Driver Name': d.name,
+    'Driving License': d.license,
+    'Salary Amount (₹)': d.lastSalary,
+    'Salary Date': d.lastSalaryDate ? new Date(d.lastSalaryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A',
+    'Payment Status': d.isSalaryPaid ? 'Paid' : 'Pending'
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const licenseCol = 2; // 0-based: "Driving License" is the 3rd column
+  for (let r = range.s.r + 1; r <= range.e.r; r++) {
+    const ref = XLSX.utils.encode_cell({ r, c: licenseCol });
+    if (ws[ref]) { ws[ref].t = 's'; ws[ref].z = '@'; }
+  }
+  ws['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 14 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Salary');
+  XLSX.writeFile(wb, `TruckFleet-Salary-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  showToast(`Exported ${drivers.length} salar${drivers.length !== 1 ? 'ies' : 'y'} to Excel.`, 'success');
 }
 
 async function toggleSalaryPaid(driverId) {

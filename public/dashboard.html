@@ -344,6 +344,9 @@
         <div class="vehicles-table-wrap">
           <div class="vtw-toolbar">
             <span class="vtw-count" id="dtw-count">0 drivers registered</span>
+            <button type="button" class="btn-export-excel" id="btn-export-drivers" onclick="exportDriversToExcel()">
+              📊 Export to Excel
+            </button>
           </div>
           <table class="data-table" id="drivers-table">
             <thead>
@@ -703,6 +706,12 @@
         </div>
 
         <div id="salary-status-section" class="salary-section" style="display:none;">
+          <div class="salary-toolbar">
+            <span class="vtw-count" id="stw-count">0 salaries assigned</span>
+            <button type="button" class="btn-export-excel" id="btn-export-salary" onclick="exportSalaryToExcel()">
+              📊 Export to Excel
+            </button>
+          </div>
           <div class="salary-status-container" id="salary-status-container">
             <!-- Status cards will be injected here -->
           </div>
