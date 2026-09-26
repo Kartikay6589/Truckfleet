@@ -57,6 +57,7 @@
   --topbar-h:   64px;
   --nav-w:      220px;   /* expanded width */
   --nav-collapsed: 68px; /* icon-only width */
+  --mobile-nav-h: 64px;  /* bottom tab bar height on phones */
 
   --r-sm: 8px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px;
   --t-f: 0.2s cubic-bezier(.4,0,.2,1);
@@ -91,7 +92,7 @@
 
 /* ── Reset ── */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth;}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth;overflow-x:hidden;max-width:100%;}
 body{
   font-family:'Outfit',sans-serif;
   background:var(--bg); color:var(--text);
@@ -1402,24 +1403,74 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   .avp-fields{grid-template-columns:1fr 1fr;}
 }
 @media(max-width:768px){
-  .left-nav{ width: 0; }
+  /* The old off-canvas sidebar had no button that ever opened it, making
+     the main nav (Dashboard/Vehicles/Drivers/...) unreachable on phones.
+     Replaced with an always-visible bottom tab bar instead. */
+  .left-nav{ width:0; flex-shrink:0; }
   .nav-inner{
-    position:fixed;top:var(--topbar-h);left:-100%;width:220px;
-    z-index:600;height:calc(100vh - var(--topbar-h));
-    transition:left var(--t-m),width var(--t-m);
-    box-shadow:var(--sh-sidemenu);
+    position:fixed; top:auto; bottom:0; left:0; right:0;
+    width:100%; height:var(--mobile-nav-h);
+    min-height:0; padding:0;
+    border-right:none; border-top:1px solid var(--border);
+    box-shadow:0 -2px 20px rgba(0,0,0,0.25);
+    z-index:600;
+    transition:none;
   }
-  .left-nav.open .nav-inner{left:0;width:220px;}
-  .left-nav:hover .nav-inner{width:var(--nav-collapsed);box-shadow:none;} /* disable hover on mobile */
-  .dash-main{padding:1.25rem;}
+  .left-nav:hover .nav-inner{ width:100%; box-shadow:0 -2px 20px rgba(0,0,0,0.25); }
+  .left-nav-links{
+    flex-direction:row; justify-content:space-around; align-items:stretch;
+    height:100%; width:100%; padding:0; gap:0;
+  }
+  .left-nav-item{
+    flex-direction:column; justify-content:center; align-items:center;
+    width:auto; min-width:0; flex:1; padding:.4rem .15rem; gap:2px; border-radius:0;
+  }
+  .left-nav:hover .left-nav-item{ padding:.4rem .15rem; gap:2px; }
+  .lni-icon{ width:auto; height:auto; font-size:1.25rem; }
+  .lni-label{
+    opacity:1; width:100%; overflow:hidden; pointer-events:auto;
+    font-size:.62rem; text-align:center; white-space:nowrap; text-overflow:ellipsis;
+  }
+  .left-nav:hover .lni-label{ opacity:1; width:100%; }
+
+  .dash-main{padding:1.25rem 1.25rem calc(1.25rem + var(--mobile-nav-h));}
   .overview-cards{grid-template-columns:1fr 1fr;}
   .avp-fields{grid-template-columns:1fr;}
   body{cursor:auto;}
   .cursor-circle,.cursor-dot{display:none;}
+
+  /* Tables have more columns than a phone screen can show at readable size —
+     scroll horizontally instead of clipping columns (including the delete
+     button) off the edge. */
+  .vehicles-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .data-table{ min-width:600px; }
+
+  /* 8 step circles + Back/Cancel buttons don't fit a phone's width — this
+     used to push the Cancel button (and the final step) off-screen with no
+     way to reach them. Keep Back/Cancel fixed and let just the step strip
+     scroll horizontally. */
+  .wizard-progress{ gap:.5rem; }
+  .wizard-back, .wizard-cancel{ flex-shrink:0; padding:.5rem .75rem; font-size:.8rem; white-space:nowrap; }
+  .wizard-steps{
+    flex:1 1 auto; min-width:0; justify-content:flex-start;
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; -ms-overflow-style:none;
+  }
+  .wizard-steps::-webkit-scrollbar{ display:none; }
+  .wizard-step{ width:28px; height:28px; font-size:.75rem; }
+  .wizard-step-line{ min-width:14px; max-width:24px; }
+  .wizard-page-content{ padding:2rem 1.25rem; }
+
+  /* Two side-by-side action buttons (Register/Edit, Confirm/Back) can get
+     squeezed too narrow to tap comfortably — stack them full-width instead. */
+  .confirm-actions{ flex-direction:column; }
+  .btn-confirm-register, .btn-confirm-edit{ width:100%; justify-content:center; }
 }
 @media(max-width:480px){
   .overview-cards{grid-template-columns:1fr;}
   .quick-actions{grid-template-columns:1fr 1fr;}
+  .sub-modal-overlay{padding:.75rem;}
+  .sub-modal{padding:1.5rem 1.25rem;}
 }
 
 /* ════════════════════════════════

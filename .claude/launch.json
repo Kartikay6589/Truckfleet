@@ -4,7 +4,7 @@
     {
       "name": "truckfleet-static",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", ".", "-l", "5000"],
+      "runtimeArgs": ["serve", "public", "-l", "5000"],
       "port": 5000
     }
   ]

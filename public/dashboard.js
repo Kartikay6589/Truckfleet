@@ -658,6 +658,10 @@ function gotoWizardStep(step) {
   // Back button
   document.getElementById('wizard-back-btn').style.visibility = step > 1 ? 'visible' : 'hidden';
 
+  // On phones the step strip scrolls horizontally — keep the active circle in view
+  const activeStep = document.getElementById(`ws-${step}`);
+  if (activeStep) activeStep.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+
   // Build step-specific UI
   if (step === 1) buildVehicleSelector();
   if (step === 8) buildConfirmCard();
@@ -1151,6 +1155,10 @@ function bwizardGotoStep(step) {
   if (backBtn) {
     backBtn.style.visibility = step > 1 ? 'visible' : 'hidden';
   }
+
+  // On phones the step strip scrolls horizontally — keep the active circle in view
+  const activeStep = document.getElementById(`bws-${step}`);
+  if (activeStep) activeStep.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   
   if (step === 4) buildBrokerConfirmCard();
 }
