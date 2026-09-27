@@ -310,12 +310,31 @@ function showWelcomeOverlay(firstName, redirect = true) {
       <div class="wc-icon">🚀</div>
       <h2 class="wc-title">Welcome, ${TFP.esc(firstName)}!</h2>
       <p class="wc-subtitle">Launching your TruckFleet Pro Dashboard...</p>
-      <div class="wc-loader"></div>
+      <div class="wc-splitflap" id="wc-splitflap"></div>
     </div>
   `;
   document.body.appendChild(overlay);
   setTimeout(() => overlay.classList.add('show'), 10);
-  if (redirect) setTimeout(() => location.href = 'dashboard.html', 1800);
+
+  if (window.createSplitFlap) {
+    createSplitFlap(document.getElementById('wc-splitflap'), {
+      words: ["LAUNCH READY", "SYNC ONLINE", "SIGNAL LIVE"],
+      flipDuration: 0.12,
+      stagger: 0.06,
+      cycleDelay: 2400,
+      charset: "alphanumeric",
+      flipsPerChar: 8,
+      tileColor: "#111827",
+      textColor: "#f8fafc",
+      tileRadius: 8,
+      gap: 6,
+      fontSize: 52,
+      loop: true,
+      padTo: 12
+    });
+  }
+
+  if (redirect) setTimeout(() => location.href = 'dashboard.html', 2200);
 }
 
 /* ---- Google Sign-In (used by both the Sign In and Sign Up modals) ---- */

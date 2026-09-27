@@ -1134,13 +1134,16 @@ button:hover ~ .cursor-circle,
 
 .welcome-content {
   text-align: center;
+  max-width: 92vw;
+  padding: 0 1rem;
+  box-sizing: border-box;
   transform: scale(0.7) translateY(50px);
   transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .welcome-overlay.show .welcome-content { transform: scale(1) translateY(0); }
 
 .wc-icon {
-  font-size: 6rem;
+  font-size: clamp(3.5rem, 12vw, 6rem);
   animation: floatRocket 2s ease-in-out infinite, thrust 0.5s alternate infinite;
   display: inline-block;
   filter: drop-shadow(0 10px 20px rgba(var(--accent-rgb),0.4));
@@ -1155,31 +1158,50 @@ button:hover ~ .cursor-circle,
 }
 
 .wc-title {
-  font-size: 3rem; font-weight: 800; color: #fff; margin-top: 1.5rem;
+  font-size: clamp(1.75rem, 7vw, 3rem); font-weight: 800; color: #fff; margin-top: 1.5rem;
   letter-spacing: -1px;
+  word-break: break-word;
 }
 .wc-subtitle {
-  font-size: 1.2rem; color: #94a3b8; margin-top: 0.75rem;
+  font-size: clamp(0.95rem, 3vw, 1.2rem); color: #94a3b8; margin-top: 0.75rem;
 }
-.wc-loader {
-  width: 240px; height: 6px; background: rgba(255,255,255,0.1);
-  border-radius: 10px; margin: 2.5rem auto 0;
-  position: relative; overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+
+/* ---- Split-flap "departure board" tiles (see split-flap.js) ---- */
+.wc-splitflap{
+  margin: 2.5rem auto 0;
+  max-width: 100%;
+  width: min(600px, 100%);
+  display: flex; justify-content: center;
 }
-.wc-loader::after {
-  content: ''; position: absolute; top: 0; left: 0; height: 100%; width: 0%;
-  background: var(--accent);
-  box-shadow: 0 0 15px var(--accent-glow);
-  animation: fillBar 2.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  border-radius: 10px;
+.split-flap{
+  display: flex; justify-content: center; align-items: center;
+  gap: var(--sf-gap, 6px);
+  perspective: 600px;
+  max-width: 100%;
 }
-@keyframes fillBar {
-  0% { width: 0%; }
-  20% { width: 30%; }
-  50% { width: 60%; }
-  80% { width: 85%; }
-  100% { width: 100%; }
+.sf-tile{
+  width: var(--sf-tile-w, 40px); height: var(--sf-tile-h, 54px);
+  background: var(--sf-tile-color, #111827); color: var(--sf-text-color, #f8fafc);
+  border-radius: var(--sf-radius, 8px);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-family: 'Courier New', monospace;
+  font-size: var(--sf-font, 32px); line-height: 1;
+  position: relative; overflow: hidden; flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35), inset 0 -3px 6px rgba(0,0,0,.35);
+}
+.sf-tile::after{
+  content: ''; position: absolute; left: 0; right: 0; top: calc(50% - 0.5px); height: 1px;
+  background: rgba(0,0,0,.45); z-index: 2;
+}
+.sf-tile-inner{ transform-style: preserve-3d; will-change: transform; }
+.sf-tile.flipping .sf-tile-inner{
+  animation: sfFlip var(--sf-flip-ms, 120ms) ease-in-out;
+}
+@keyframes sfFlip{
+  0%   { transform: rotateX(0deg); }
+  50%  { transform: rotateX(-90deg); }
+  51%  { transform: rotateX(90deg); }
+  100% { transform: rotateX(0deg); }
 }
 
 
