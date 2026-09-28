@@ -2,6 +2,48 @@
    TRUCKFLEET PRO — dashboard.js  v3.0
    ════════════════════════════════════════════ */
 
+/* ── Excel import helpers (shared by Vehicles/Drivers/Salary) ── */
+
+/* Reads an .xlsx/.xls File into an array of row objects via SheetJS. Rejects
+   on anything that isn't a readable spreadsheet, so callers can show one
+   clear error instead of letting a parse exception bubble up. */
+function readExcelFile(file) {
+  return new Promise((resolve, reject) => {
+    if (typeof XLSX === 'undefined') {
+      reject(new Error('Excel library failed to load. Check your connection and try again.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that file.'));
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        resolve(XLSX.utils.sheet_to_json(sheet, { defval: '' }));
+      } catch (err) {
+        reject(new Error('That file doesn\'t look like a valid Excel spreadsheet.'));
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/* Column headers are matched case-insensitively against a list of accepted
+   aliases, so a file re-exported from this app (or lightly hand-edited)
+   still imports correctly even if a header's capitalization changed. */
+function findColumn(row, aliases) {
+  const keys = Object.keys(row);
+  for (const alias of aliases) {
+    const match = keys.find(k => k.trim().toLowerCase() === alias);
+    if (match !== undefined && String(row[match]).trim() !== '') return row[match];
+  }
+  return undefined;
+}
+
+function summarizeImport(parts, verb) {
+  return parts.length ? `Import complete: ${parts.join(', ')}.` : `Nothing was ${verb}.`;
+}
+
 /* ── Auth guard & Global State ── */
 let currentUser = null;
 let currentVehicles = [];
@@ -518,6 +560,65 @@ function exportVehiclesToExcel() {
   showToast(`Exported ${vehicles.length} vehicle${vehicles.length !== 1 ? 's' : ''} to Excel.`, 'success');
 }
 
+async function handleVehicleImportFile(event) {
+  const file = event.target.files[0];
+  event.target.value = ''; // lets the user re-pick the same file later
+  if (!file) return;
+  await importVehiclesFromExcel(file);
+}
+
+/* ── Import vehicles from an .xlsx file. Accepts the same headers this app
+   exports (Vehicle Number, Owner Name, Driver Name, Category) — vehicles
+   already registered (matched by number) are skipped, not duplicated. ── */
+async function importVehiclesFromExcel(file) {
+  let rows;
+  try {
+    rows = await readExcelFile(file);
+  } catch (err) {
+    showToast(err.message, 'error');
+    return;
+  }
+  if (rows.length === 0) {
+    showToast('That file has no rows to import.', 'error');
+    return;
+  }
+
+  const existingNumbers = new Set(currentVehicles.map(v => v.vehicleNumber));
+  let added = 0, skipped = 0, invalid = 0;
+
+  for (const row of rows) {
+    const number = String(findColumn(row, ['vehicle number', 'vehicle no', 'number']) || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const owner = String(findColumn(row, ['owner name', 'owner']) || '').trim();
+    const driver = String(findColumn(row, ['driver name', 'driver']) || '').trim();
+    const type = String(findColumn(row, ['category', 'vehicle type / subtype', 'vehicle type', 'type']) || '').trim();
+
+    if (!number || !owner || !type) { invalid++; continue; }
+    if (existingNumbers.has(number)) { skipped++; continue; }
+
+    try {
+      const vehicle = await FS.add(uid, 'vehicles', { vehicleNumber: number, ownerName: owner, driverName: driver, vehicleType: type, addedAt: new Date().toISOString() });
+      currentVehicles.push(vehicle);
+      existingNumbers.add(number);
+      added++;
+    } catch (err) {
+      invalid++;
+    }
+  }
+
+  renderVehiclesTable();
+  refreshStats();
+  if (added > 0) {
+    await FS.addNotification(uid, `Imported ${added} vehicle${added !== 1 ? 's' : ''} from Excel`);
+    refreshNotifications();
+  }
+
+  const parts = [];
+  if (added) parts.push(`${added} added`);
+  if (skipped) parts.push(`${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped`);
+  if (invalid) parts.push(`${invalid} row${invalid !== 1 ? 's' : ''} had missing data`);
+  showToast(summarizeImport(parts, 'imported'), added > 0 ? 'success' : 'error');
+}
+
 async function deleteVehicle(id) {
   const confirmed = await asyncConfirm('Remove this vehicle?');
   if (!confirmed) return;
@@ -644,6 +745,62 @@ function exportDriversToExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Drivers');
   XLSX.writeFile(wb, `TruckFleet-Drivers-${new Date().toISOString().slice(0, 10)}.xlsx`);
   showToast(`Exported ${drivers.length} driver${drivers.length !== 1 ? 's' : ''} to Excel.`, 'success');
+}
+
+async function handleDriverImportFile(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  await importDriversFromExcel(file);
+}
+
+/* ── Import drivers from an .xlsx file. Accepts Driver Name + Driving
+   License headers — drivers already registered (matched by license) are
+   skipped, not duplicated. ── */
+async function importDriversFromExcel(file) {
+  let rows;
+  try {
+    rows = await readExcelFile(file);
+  } catch (err) {
+    showToast(err.message, 'error');
+    return;
+  }
+  if (rows.length === 0) {
+    showToast('That file has no rows to import.', 'error');
+    return;
+  }
+
+  const existingLicenses = new Set(currentDrivers.map(d => d.license));
+  let added = 0, skipped = 0, invalid = 0;
+
+  for (const row of rows) {
+    const name = String(findColumn(row, ['driver name', 'name']) || '').trim();
+    const license = String(findColumn(row, ['driving license', 'license', 'license number']) || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+    if (!name || !license) { invalid++; continue; }
+    if (existingLicenses.has(license)) { skipped++; continue; }
+
+    try {
+      const driver = await FS.add(uid, 'drivers', { name, license, addedAt: new Date().toISOString() });
+      currentDrivers.push(driver);
+      existingLicenses.add(license);
+      added++;
+    } catch (err) {
+      invalid++;
+    }
+  }
+
+  renderDriversTable();
+  if (added > 0) {
+    await FS.addNotification(uid, `Imported ${added} driver${added !== 1 ? 's' : ''} from Excel`);
+    refreshNotifications();
+  }
+
+  const parts = [];
+  if (added) parts.push(`${added} added`);
+  if (skipped) parts.push(`${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped`);
+  if (invalid) parts.push(`${invalid} row${invalid !== 1 ? 's' : ''} had missing data`);
+  showToast(summarizeImport(parts, 'imported'), added > 0 ? 'success' : 'error');
 }
 
 async function deleteDriver(id) {
@@ -1787,6 +1944,62 @@ function exportSalaryToExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Salary');
   XLSX.writeFile(wb, `TruckFleet-Salary-${new Date().toISOString().slice(0, 10)}.xlsx`);
   showToast(`Exported ${drivers.length} salar${drivers.length !== 1 ? 'ies' : 'y'} to Excel.`, 'success');
+}
+
+async function handleSalaryImportFile(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  await importSalaryFromExcel(file);
+}
+
+/* ── Import salary records from an .xlsx file. Matches each row to an
+   EXISTING driver by Driving License (this never creates a new driver) and
+   overwrites their salary amount / date / paid status. ── */
+async function importSalaryFromExcel(file) {
+  let rows;
+  try {
+    rows = await readExcelFile(file);
+  } catch (err) {
+    showToast(err.message, 'error');
+    return;
+  }
+  if (rows.length === 0) {
+    showToast('That file has no rows to import.', 'error');
+    return;
+  }
+
+  let updated = 0, notFound = 0, invalid = 0;
+
+  for (const row of rows) {
+    const license = String(findColumn(row, ['driving license', 'license']) || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const rawAmount = findColumn(row, ['salary amount (₹)', 'salary amount', 'amount']);
+    const amount = Number(rawAmount);
+    const rawStatus = findColumn(row, ['payment status', 'status']);
+
+    if (!license || !rawAmount || isNaN(amount) || amount < 0) { invalid++; continue; }
+
+    const driver = currentDrivers.find(d => d.license === license);
+    if (!driver) { notFound++; continue; }
+
+    const isPaid = String(rawStatus || '').trim().toLowerCase() === 'paid';
+    const salaryData = { lastSalary: amount, lastSalaryDate: new Date().toISOString(), isSalaryPaid: isPaid };
+    try {
+      await FS.update(uid, 'drivers', driver.id, salaryData);
+      Object.assign(driver, salaryData);
+      updated++;
+    } catch (err) {
+      invalid++;
+    }
+  }
+
+  renderSalaryStatus();
+
+  const parts = [];
+  if (updated) parts.push(`${updated} updated`);
+  if (notFound) parts.push(`${notFound} driver${notFound !== 1 ? 's' : ''} not found`);
+  if (invalid) parts.push(`${invalid} row${invalid !== 1 ? 's' : ''} invalid`);
+  showToast(summarizeImport(parts, 'imported'), updated > 0 ? 'success' : 'error');
 }
 
 async function toggleSalaryPaid(driverId) {

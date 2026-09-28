@@ -853,6 +853,7 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
 }
 .vtw-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;padding:1rem 1.5rem;border-bottom:1px solid var(--border);}
 .vtw-count{font-size:.83rem;font-weight:600;color:var(--text3);}
+.vtw-excel-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.75rem;}
 .btn-export-excel{
   display:flex;align-items:center;gap:.5rem;white-space:nowrap;flex-shrink:0;
   background:rgba(34,197,94,0.12);color:#22c55e;
@@ -862,6 +863,15 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
 }
 .btn-export-excel:hover{background:rgba(34,197,94,0.2);transform:translateY(-1px);}
 .btn-export-excel:active{transform:translateY(0);}
+.btn-import-excel{
+  display:flex;align-items:center;gap:.5rem;white-space:nowrap;flex-shrink:0;
+  background:rgba(59,130,246,0.12);color:#3b82f6;
+  border:1px solid rgba(59,130,246,0.3);border-radius:var(--r-sm);
+  padding:.55rem 1.1rem;font-size:.83rem;font-weight:700;
+  transition:all var(--t-f);
+}
+.btn-import-excel:hover{background:rgba(59,130,246,0.2);transform:translateY(-1px);}
+.btn-import-excel:active{transform:translateY(0);}
 .data-table{width:100%;border-collapse:collapse;font-size:.88rem;}
 .data-table th{
   padding:.75rem 1.25rem;text-align:left;
@@ -1519,7 +1529,8 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   /* At the narrowest phones, keep the toolbar readable as two clear rows
      rather than squeezing the count and button onto one tight line. */
   .vtw-toolbar, .salary-toolbar{ flex-direction:column; align-items:stretch; }
-  .btn-export-excel{ justify-content:center; }
+  .vtw-excel-actions{ flex-direction:column; align-items:stretch; width:100%; }
+  .btn-export-excel, .btn-import-excel{ justify-content:center; }
 }
 
 /* ════════════════════════════════
