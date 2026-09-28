@@ -43,26 +43,33 @@ window.FS = {
     });
   },
 
-  async signInWithGoogle() {
+  /* role is only meaningful the first time this account signs in — an
+     existing account keeps whatever role it already has (see
+     ensureUserProfile). */
+  async signInWithGoogle(role) {
     await fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     const result = await fbAuth.signInWithPopup(googleProvider);
-    await this.ensureUserProfile(result.user);
+    await this.ensureUserProfile(result.user, role);
     return result.user;
   },
 
   /* Email/password sign-up. Creates the Firebase Auth account and the
      Firestore profile document together — if either step fails, script.js
      shows the error and the user can just try again. */
-  async signUpWithEmail({ firstName, lastName, email, password }) {
+  async signUpWithEmail({ firstName, lastName, email, password, role }) {
     const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
     const user = cred.user;
     try { await user.updateProfile({ displayName: `${firstName} ${lastName}`.trim() }); } catch (e) {}
     const profile = {
       firstName, lastName, email, phone: '', photoURL: '',
-      role: 'fleet-owner', createdAt: new Date().toISOString()
+      role: this.normalizeRole(role), createdAt: new Date().toISOString()
     };
     await this.userDoc(user.uid).set(profile);
     return user;
+  },
+
+  normalizeRole(role) {
+    return ['fleet-owner', 'company', 'driver'].includes(role) ? role : 'fleet-owner';
   },
 
   /* Email/password sign-in. "Remember me" unchecked → session-only
@@ -91,7 +98,7 @@ window.FS = {
 
   /* Creates the users/{uid} profile document the first time someone signs
      in; leaves it alone on every later sign-in. */
-  async ensureUserProfile(user) {
+  async ensureUserProfile(user, role) {
     const ref = this.userDoc(user.uid);
     const snap = await ref.get();
     if (snap.exists) return snap.data();
@@ -103,7 +110,7 @@ window.FS = {
       email: user.email || '',
       phone: user.phoneNumber || '',
       photoURL: user.photoURL || '',
-      role: 'fleet-owner',
+      role: this.normalizeRole(role),
       createdAt: new Date().toISOString()
     };
     await ref.set(profile);

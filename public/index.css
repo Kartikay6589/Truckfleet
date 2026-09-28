@@ -731,6 +731,25 @@ button:hover ~ .cursor-circle,
 .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
 
 .form-group label { display:block; font-size:0.85rem; font-weight:600; color:var(--text-secondary); margin-bottom:0.5rem; }
+
+/* ---- Sign-up "I am a..." role picker ---- */
+.role-select-btns{ display:flex; gap:.6rem; flex-wrap:wrap; }
+.role-select-btn{
+  flex:1 1 0; min-width:90px;
+  display:flex; flex-direction:column; align-items:center; gap:.3rem;
+  padding:.7rem .5rem;
+  background:var(--bg-input); border:1.5px solid var(--border-color);
+  border-radius:var(--radius-sm); color:var(--text-secondary);
+  font-family:'Outfit',sans-serif; font-size:.78rem; font-weight:600;
+  cursor:pointer; transition:all var(--transition-fast); text-align:center;
+}
+.role-select-btn .rsb-icon{ font-size:1.3rem; }
+.role-select-btn:hover{ border-color:var(--accent-500); color:var(--text-primary); }
+.role-select-btn.selected{
+  border-color:var(--accent-500); color:var(--text-primary);
+  background:var(--bg-input-focus); box-shadow:0 0 0 3px var(--accent-glow);
+}
+
 .input-wrap { position:relative; display:flex; align-items:center; }
 .input-icon { position:absolute; left:1rem; font-size:1rem; pointer-events:none; z-index:1; }
 

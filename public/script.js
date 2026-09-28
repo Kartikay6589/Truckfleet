@@ -337,14 +337,26 @@ function showWelcomeOverlay(firstName, redirect = true) {
   if (redirect) setTimeout(() => location.href = 'dashboard.html', 2200);
 }
 
+/* ---- Sign-up "I am a..." role picker ---- */
+function selectSignupRole(role) {
+  document.getElementById('signup-role').value = role;
+  document.querySelectorAll('.role-select-btn').forEach(btn => btn.classList.remove('selected'));
+  const activeBtn = document.getElementById(`signup-role-${role}`);
+  if (activeBtn) activeBtn.classList.add('selected');
+}
+
 /* ---- Google Sign-In (used by both the Sign In and Sign Up modals) ---- */
 async function continueWithGoogle() {
   const openType = ['signin', 'signup'].find(t => document.getElementById(`modal-${t}`)?.classList.contains('active'));
   const btn = document.getElementById(openType === 'signup' ? 'btn-google-signup' : 'btn-google-signin');
   if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
 
+  // Only the Sign Up modal has a role picker — a returning user signing in
+  // via Google keeps whatever role they already have.
+  const role = openType === 'signup' ? document.getElementById('signup-role').value : undefined;
+
   try {
-    const user = await FS.signInWithGoogle();
+    const user = await FS.signInWithGoogle(role);
     if (openType) closeModal(openType);
     showWelcomeOverlay((user.displayName || 'there').split(' ')[0]);
   } catch (err) {
@@ -362,6 +374,7 @@ async function handleSignUp(e) {
   const lastName = document.getElementById('signup-lastname').value.trim();
   const email = document.getElementById('signup-email').value.trim().toLowerCase();
   const password = document.getElementById('signup-password').value;
+  const role = document.getElementById('signup-role').value;
   const terms = document.getElementById('signup-terms').checked;
 
   if (!firstName) { showAnimatedError('First name is mandatory. Please enter your first name.'); return; }
@@ -375,7 +388,7 @@ async function handleSignUp(e) {
   submitBtn.textContent = 'Creating account...';
 
   try {
-    const user = await FS.signUpWithEmail({ firstName, lastName, email, password });
+    const user = await FS.signUpWithEmail({ firstName, lastName, email, password, role });
     closeModal('signup');
     showWelcomeOverlay(firstName);
   } catch (err) {
