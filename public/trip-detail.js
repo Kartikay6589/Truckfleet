@@ -206,11 +206,22 @@ async function loadTrip() {
   const isPaid = trip.paid || balance <= 0;
   renderPaymentStatus(isPaid, trip, balance);
 
-  // Mark-paid button
+  // Mark-paid button — its label/action depends on where this trip is in the
+  // payment flow: never touched, expenses already recorded but balance not
+  // confirmed yet, or fully settled. See the three branches below.
   const markPaidBtn = document.getElementById('btn-mark-paid');
   if (isPaid) {
     markPaidBtn.disabled = true;
     markPaidBtn.textContent = '✅ Payment Already Settled';
+    markPaidBtn.onclick = null;
+  } else if (trip.expensesRecorded) {
+    markPaidBtn.disabled = false;
+    markPaidBtn.textContent = '✅ Confirm Balance Received';
+    markPaidBtn.onclick = confirmBalanceReceivedDirect;
+  } else {
+    markPaidBtn.disabled = false;
+    markPaidBtn.textContent = '✅ Mark Payment as Received';
+    markPaidBtn.onclick = markAsPaid;
   }
 }
 
@@ -240,32 +251,6 @@ function renderPaymentStatus(isPaid, trip, balance) {
       tlPaidItem.style.display = 'flex';
       paidDateEl.textContent   = new Date(trip.paidAt).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
     }
-
-    // Render Expenses & Profit
-    document.getElementById('td-card-expenses').style.display = 'block';
-    
-    const fuel = trip.fuelExpense || 0;
-    const toll = trip.tollExpense || 0;
-    const driver = trip.driverExpense || 0;
-    const totalExp = fuel + toll + driver;
-    const profit = trip.total - totalExp;
-
-    document.getElementById('td-edit-fuel').value = fuel;
-    document.getElementById('td-edit-toll').value = toll;
-    document.getElementById('td-edit-driver').value = driver;
-    document.getElementById('td-exp-total').textContent = `₹${totalExp.toLocaleString('en-IN')}`;
-    
-    const profitEl = document.getElementById('td-exp-profit');
-    const profitLabel = document.getElementById('td-exp-profit-label');
-    if (profit >= 0) {
-      if(profitLabel) profitLabel.textContent = 'Net Profit';
-      profitEl.textContent = `+ ₹${profit.toLocaleString('en-IN')}`;
-      profitEl.style.color = 'var(--success)';
-    } else {
-      if(profitLabel) profitLabel.textContent = 'Net Loss';
-      profitEl.textContent = `- ₹${Math.abs(profit).toLocaleString('en-IN')}`;
-      profitEl.style.color = 'var(--danger)';
-    }
   } else {
     // Pending
     alert.style.display      = 'flex';
@@ -275,6 +260,40 @@ function renderPaymentStatus(isPaid, trip, balance) {
 
     // Start live counter
     startDayCounter(trip.registeredAt);
+  }
+
+  // Expenses were recorded either when the trip was actually settled, or
+  // earlier via "No, Not Received Yet" — either way, show what was already
+  // entered instead of hiding it until the balance is confirmed received.
+  if (isPaid || trip.expensesRecorded) {
+    renderExpensesCard(trip);
+  }
+}
+
+function renderExpensesCard(trip) {
+  document.getElementById('td-card-expenses').style.display = 'block';
+
+  const fuel = trip.fuelExpense || 0;
+  const toll = trip.tollExpense || 0;
+  const driver = trip.driverExpense || 0;
+  const totalExp = fuel + toll + driver;
+  const profit = trip.total - totalExp;
+
+  document.getElementById('td-edit-fuel').value = fuel;
+  document.getElementById('td-edit-toll').value = toll;
+  document.getElementById('td-edit-driver').value = driver;
+  document.getElementById('td-exp-total').textContent = `₹${totalExp.toLocaleString('en-IN')}`;
+
+  const profitEl = document.getElementById('td-exp-profit');
+  const profitLabel = document.getElementById('td-exp-profit-label');
+  if (profit >= 0) {
+    if (profitLabel) profitLabel.textContent = 'Net Profit';
+    profitEl.textContent = `+ ₹${profit.toLocaleString('en-IN')}`;
+    profitEl.style.color = 'var(--success)';
+  } else {
+    if (profitLabel) profitLabel.textContent = 'Net Loss';
+    profitEl.textContent = `- ₹${Math.abs(profit).toLocaleString('en-IN')}`;
+    profitEl.style.color = 'var(--danger)';
   }
 }
 
@@ -398,7 +417,7 @@ async function executePaidConfirm(receivedBalance) {
 
   const updates = receivedBalance
     ? { paid: true, paidAt: new Date().toISOString(), balance: 0, fuelExpense: fuel, tollExpense: toll, driverExpense: driver }
-    : { fuelExpense: fuel, tollExpense: toll, driverExpense: driver };
+    : { fuelExpense: fuel, tollExpense: toll, driverExpense: driver, expensesRecorded: true };
 
   try {
     await FS.update(uid, 'trips', tripData.id, updates);
@@ -415,6 +434,61 @@ async function executePaidConfirm(receivedBalance) {
   } else {
     showToast('Expenses saved. Balance is still marked as pending.', 'info');
   }
+  setTimeout(() => location.reload(), 1000);
+}
+
+/* ── Simple Yes/No confirm dialog (reuses the same overlay dashboard.js
+   uses for delete confirmations) ── */
+function asyncConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('custom-confirm-overlay');
+    const msgEl = document.getElementById('custom-confirm-message');
+    const btnCancel = document.getElementById('custom-confirm-cancel');
+    const btnOk = document.getElementById('custom-confirm-ok');
+
+    msgEl.textContent = message;
+    overlay.classList.add('show');
+
+    function cleanup() {
+      overlay.classList.remove('show');
+      btnCancel.removeEventListener('click', onCancel);
+      btnOk.removeEventListener('click', onOk);
+    }
+    function onCancel() { cleanup(); resolve(false); }
+    function onOk() { cleanup(); resolve(true); }
+
+    btnCancel.addEventListener('click', onCancel);
+    btnOk.addEventListener('click', onOk);
+  });
+}
+
+/* Shown instead of the full 4-step wizard once expenses have already been
+   recorded (via "No, Not Received Yet") — no need to re-enter them, just
+   confirm the balance actually came in now. Reads the live expense inputs
+   since those are auto-saved as the user edits them (see
+   liveUpdateExpenses), so whatever's on screen is what gets locked in. */
+async function confirmBalanceReceivedDirect() {
+  if (!tripData) return;
+
+  const balance = tripData.total - tripData.advance;
+  const confirmed = await asyncConfirm(`Have you received the Balance Remaining of ₹${balance.toLocaleString('en-IN')}?`);
+  if (!confirmed) return;
+
+  const fuel = parseFloat(document.getElementById('td-edit-fuel').value) || 0;
+  const toll = parseFloat(document.getElementById('td-edit-toll').value) || 0;
+  const driver = parseFloat(document.getElementById('td-edit-driver').value) || 0;
+
+  const updates = { paid: true, paidAt: new Date().toISOString(), balance: 0, fuelExpense: fuel, tollExpense: toll, driverExpense: driver };
+  try {
+    await FS.update(uid, 'trips', tripData.id, updates);
+  } catch (err) {
+    showToast(err.message || 'Could not save this payment.', 'error');
+    return;
+  }
+  Object.assign(tripData, updates);
+
+  if (counterInterval) clearInterval(counterInterval);
+  showToast('✅ Payment marked as received!', 'success');
   setTimeout(() => location.reload(), 1000);
 }
 
