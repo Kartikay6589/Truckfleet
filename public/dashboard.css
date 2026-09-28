@@ -897,6 +897,32 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
 .td-row-actions{display:flex;align-items:center;gap:.35rem;white-space:nowrap;}
 .btn-edit-row:hover{color:var(--accent);background:rgba(var(--accent-rgb),0.12);}
 
+/* Three-dot row menu — used on Vehicles/Drivers table rows and Trip/Broker cards.
+   Dropdown is position:fixed (positioned via JS from the button's screen rect) so it
+   never gets clipped by an ancestor's overflow:auto/hidden (e.g. the horizontally
+   scrollable table wraps). */
+.row-menu{ position:relative; display:inline-flex; }
+.row-menu-btn{
+  background:none; border:none; color:var(--text3); font-size:1.25rem; font-weight:700;
+  padding:.15rem .55rem; border-radius:6px; cursor:pointer; line-height:1; transition:all var(--t-f);
+}
+.row-menu-btn:hover, .row-menu-btn.active{ background:var(--bg-card-h,rgba(var(--accent-rgb),0.12)); color:var(--heading); }
+.row-menu-dropdown{
+  display:none; flex-direction:column; min-width:160px;
+  background:var(--bg-modal,var(--bg-card)); border:1px solid var(--border); border-radius:var(--r-md);
+  box-shadow:0 10px 30px rgba(0,0,0,0.4); z-index:9999; overflow:hidden; padding:.35rem;
+}
+.row-menu-dropdown.open{ display:flex; }
+.row-menu-item{
+  display:flex; align-items:center; gap:.55rem; width:100%; text-align:left;
+  padding:.55rem .7rem; border-radius:var(--r-sm,6px); font-size:.85rem; font-weight:600;
+  color:var(--text); background:none; border:none; cursor:pointer; text-decoration:none;
+  font-family:'Outfit', sans-serif;
+}
+.row-menu-item:hover{ background:rgba(var(--accent-rgb),0.12); }
+.row-menu-item.row-menu-danger{ color:var(--red); }
+.row-menu-item.row-menu-danger:hover{ background:var(--red-bg); }
+
 /* ════════════════════════════════
    TRIP REGISTRATION VIEW
 ════════════════════════════════ */
@@ -929,6 +955,21 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
 .tc-date{font-size:.75rem;color:var(--text3);margin-top:.25rem;}
 .tc-arrow{font-size:1.1rem;color:var(--text3);transition:transform var(--t-f);}
 .trip-card:hover .tc-arrow{transform:translateX(4px);color:var(--accent);}
+
+/* Narrow phones: the num circle + right column + row-menu + arrow left too little
+   room for the route/vehicle text once the three-dot menu was added — shrink the
+   fixed-width neighbors and drop the now-redundant arrow (the row-menu covers its
+   job) instead of letting text visually collide. */
+@media (max-width: 480px) {
+  .trip-card{ gap:.6rem; padding:1rem; }
+  .tc-num{ width:30px; height:30px; font-size:.7rem; }
+  .tc-right{ max-width:96px; }
+  .tc-amount{ font-size:.85rem; }
+  .tc-balance{ font-size:.68rem; }
+  .tc-date{ font-size:.65rem; }
+  .row-menu-btn{ padding:.1rem .4rem; }
+  .tc-arrow{ display:none; }
+}
 
 /* Cycle Group Card */
 .cycle-group-card {
@@ -1066,6 +1107,13 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
 .bc-value { font-size: 0.95rem; font-weight: 600; color: var(--heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bc-profit { text-align: right; }
 .bc-profit .bc-value { font-size: 1.15rem; font-weight: 800; }
+
+/* Narrow phones: 3 side-by-side columns + the row-menu button left no room for
+   any column's text — stack the columns instead of letting them get crushed. */
+@media (max-width: 480px) {
+  .bc-grid{ grid-template-columns: 1fr; gap:.5rem; }
+  .bc-profit{ text-align: left; }
+}
 
 .tc-status-badge{
   padding:.2rem .65rem;border-radius:50px;font-size:.72rem;font-weight:700;

@@ -153,6 +153,38 @@ function updateNotifBadge() {
 }
 
 /* ════════════════════════════════════════════
+   ROW ACTION MENU (three-dot ⋮ menu — Vehicles/Drivers rows, Trip/Broker cards)
+════════════════════════════════════════════ */
+function closeAllRowMenus() {
+  document.querySelectorAll('.row-menu-dropdown.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.row-menu-btn.active').forEach(b => b.classList.remove('active'));
+}
+function toggleRowMenu(btn, event) {
+  event.stopPropagation();
+  const dropdown = btn.nextElementSibling;
+  const wasOpen = dropdown.classList.contains('open');
+  closeAllRowMenus();
+  if (wasOpen) return;
+
+  const rect = btn.getBoundingClientRect();
+  dropdown.style.position = 'fixed';
+  dropdown.style.top = (rect.bottom + 4) + 'px';
+  dropdown.style.left = 'auto';
+  dropdown.style.right = (window.innerWidth - rect.right) + 'px';
+  dropdown.classList.add('open');
+  btn.classList.add('active');
+
+  requestAnimationFrame(() => {
+    const dRect = dropdown.getBoundingClientRect();
+    if (dRect.bottom > window.innerHeight) {
+      dropdown.style.top = Math.max(4, rect.top - dRect.height - 4) + 'px';
+    }
+  });
+}
+document.addEventListener('click', closeAllRowMenus);
+document.addEventListener('scroll', closeAllRowMenus, true);
+
+/* ════════════════════════════════════════════
    CUSTOM CONFIRM MODAL
 ════════════════════════════════════════════ */
 function asyncConfirm(message) {
@@ -606,8 +638,13 @@ function renderVehiclesTable() {
       <td><span class="type-badge">${v.vehicleType}</span></td>
       <td>${new Date(v.addedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
       <td class="td-row-actions">
-        <button class="btn-del btn-edit-row" onclick="editVehicle('${v.id}')" title="Edit">✏️</button>
-        <button class="btn-del" onclick="deleteVehicle('${v.id}')" title="Delete">🗑️</button>
+        <div class="row-menu">
+          <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Actions">⋮</button>
+          <div class="row-menu-dropdown">
+            <button class="row-menu-item" onclick="editVehicle('${v.id}')">✏️ Edit</button>
+            <button class="row-menu-item row-menu-danger" onclick="deleteVehicle('${v.id}')">🗑️ Delete</button>
+          </div>
+        </div>
       </td>
     </tr>
   `).join('');
@@ -713,6 +750,48 @@ async function importVehiclesFromExcel(file) {
   if (skipped) parts.push(`${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped`);
   if (invalid) parts.push(`${invalid} row${invalid !== 1 ? 's' : ''} had missing data`);
   showToast(summarizeImport(parts, 'imported'), added > 0 ? 'success' : 'error');
+}
+
+async function deleteTrip(id) {
+  const confirmed = await asyncConfirm('Delete this trip? This cannot be undone.');
+  if (!confirmed) return;
+  const t = currentTrips.find(x => x.id === id);
+  if (!t) return;
+
+  try {
+    await FS.remove(uid, 'trips', id);
+  } catch (err) {
+    showToast(err.message || 'Could not delete this trip.', 'error');
+    return;
+  }
+
+  currentTrips = currentTrips.filter(x => x.id !== id);
+  await FS.addNotification(uid, `Trip removed: ${t.from} → ${t.to}`);
+  refreshNotifications();
+  renderTripsList();
+  refreshStats();
+  showToast('Trip deleted.', 'info');
+}
+
+async function deleteBrokerTrip(id) {
+  const confirmed = await asyncConfirm('Delete this brokered trip? This cannot be undone.');
+  if (!confirmed) return;
+  const t = currentBrokerTrips.find(x => x.id === id);
+  if (!t) return;
+
+  try {
+    await FS.remove(uid, 'brokerTrips', id);
+  } catch (err) {
+    showToast(err.message || 'Could not delete this brokered trip.', 'error');
+    return;
+  }
+
+  currentBrokerTrips = currentBrokerTrips.filter(x => x.id !== id);
+  await FS.addNotification(uid, `Brokered trip removed: ${t.from} → ${t.to}`);
+  refreshNotifications();
+  renderBrokerList();
+  refreshStats();
+  showToast('Brokered trip deleted.', 'info');
 }
 
 async function deleteVehicle(id) {
@@ -871,8 +950,13 @@ function renderDriversTable() {
       <td>${d.email ? '<span class="type-badge">✉️ Invited</span>' : '<span class="type-badge" style="opacity:.6">No email</span>'}</td>
       <td>${new Date(d.addedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
       <td class="td-row-actions">
-        <button class="btn-del btn-edit-row" onclick="editDriver('${d.id}')" title="Edit">✏️</button>
-        <button class="btn-del" onclick="deleteDriver('${d.id}')" title="Delete">🗑️</button>
+        <div class="row-menu">
+          <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Actions">⋮</button>
+          <div class="row-menu-dropdown">
+            <button class="row-menu-item" onclick="editDriver('${d.id}')">✏️ Edit</button>
+            <button class="row-menu-item row-menu-danger" onclick="deleteDriver('${d.id}')">🗑️ Delete</button>
+          </div>
+        </div>
       </td>
     </tr>
   `).join('');
@@ -1447,9 +1531,10 @@ function renderTripsList() {
       const t = cycleTrips[0];
       const balance = t.balance;
       const isPaid  = t.paid || balance <= 0;
-      const card = document.createElement('a');
+      const card = document.createElement('div');
       card.className = 'trip-card';
-      card.href = `trip-detail.html?id=${t.id}`;
+      card.style.cursor = 'pointer';
+      card.onclick = () => location.href = `trip-detail.html?id=${t.id}`;
       card.innerHTML = `
         <div class="tc-num">${cycleNum}</div>
         <div class="tc-main">
@@ -1462,6 +1547,13 @@ function renderTripsList() {
             ${isPaid ? '✅ Paid' : `⏳ ₹${balance.toLocaleString('en-IN')} due`}
           </div>
           <div class="tc-date">${new Date(t.registeredAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</div>
+        </div>
+        <div class="row-menu" onclick="event.stopPropagation()">
+          <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Actions">⋮</button>
+          <div class="row-menu-dropdown">
+            <button class="row-menu-item" onclick="location.href='trip-detail.html?id=${t.id}'">✏️ Edit</button>
+            <button class="row-menu-item row-menu-danger" onclick="deleteTrip('${t.id}')">🗑️ Delete</button>
+          </div>
         </div>
         <span class="tc-arrow">→</span>
       `;
@@ -1748,10 +1840,17 @@ function renderBrokerList() {
           </span>
         </div>
       </div>
+      <div class="row-menu" onclick="event.stopPropagation()">
+        <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Actions">⋮</button>
+        <div class="row-menu-dropdown">
+          <button class="row-menu-item" onclick="location.href='brokered-detail.html?id=${t.id}'">✏️ Edit</button>
+          <button class="row-menu-item row-menu-danger" onclick="deleteBrokerTrip('${t.id}')">🗑️ Delete</button>
+        </div>
+      </div>
     `;
     listEl.appendChild(card);
   });
-  
+
   container.innerHTML = '';
   container.appendChild(listEl);
 }
