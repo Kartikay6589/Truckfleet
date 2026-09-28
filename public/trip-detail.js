@@ -356,13 +356,19 @@ function nextExpenseStep(step) {
       <div class="pcs-row"><span class="pcs-label">Route</span><span class="pcs-value">${tripData.from} → ${tripData.to}</span></div>
       <div class="pcs-divider"></div>
       <div class="pcs-row"><span class="pcs-label">Total Amount</span><span class="pcs-value">₹${tripData.total.toLocaleString('en-IN')}</span></div>
-      <div class="pcs-row pcs-row-highlight"><span class="pcs-label">Balance Received</span><span class="pcs-value">₹${balance.toLocaleString('en-IN')}</span></div>
+      <div class="pcs-row pcs-row-highlight"><span class="pcs-label">Balance Remaining</span><span class="pcs-value">₹${balance.toLocaleString('en-IN')}</span></div>
       <div class="pcs-divider"></div>
       <div class="pcs-row"><span class="pcs-label">Total Expenses</span><span class="pcs-value" style="color:var(--danger)">₹${totalExp.toLocaleString('en-IN')}</span></div>
       <div class="pcs-row"><span class="pcs-label">${profit >= 0 ? 'Estimated Profit' : 'Estimated Loss'}</span><span class="pcs-value" style="color:${profit >= 0 ? 'var(--success)' : 'var(--danger)'}">${profit >= 0 ? '+' : '-'} ₹${Math.abs(profit).toLocaleString('en-IN')}</span></div>
     `;
+
+    // No balance left to confirm receiving (advance already covered it) —
+    // asking "did you receive the balance?" would make no sense here.
+    const hasBalance = balance > 0;
+    document.getElementById('balance-confirm-group').style.display = hasBalance ? 'block' : 'none';
+    document.getElementById('already-settled-group').style.display = hasBalance ? 'none' : 'flex';
   }
-  
+
   document.getElementById(`expense-step-${step}`).style.display = 'block';
 }
 
@@ -379,14 +385,21 @@ function closeSubModalOnOverlay(e, id) {
   if (e.target.id === `modal-${id}`) closeSubModal(id);
 }
 
-async function executePaidConfirm() {
+/* receivedBalance: true when the user explicitly confirmed the Balance
+   Remaining was actually received (or there was no balance left to
+   confirm) — false means they said "not received yet", so expenses are
+   saved but the trip stays pending instead of silently being marked paid. */
+async function executePaidConfirm(receivedBalance) {
   if (!tripData) return;
 
   const fuel = parseFloat(document.getElementById('exp-fuel').value) || 0;
   const toll = parseFloat(document.getElementById('exp-toll').value) || 0;
   const driver = parseFloat(document.getElementById('exp-driver').value) || 0;
 
-  const updates = { paid: true, paidAt: new Date().toISOString(), balance: 0, fuelExpense: fuel, tollExpense: toll, driverExpense: driver };
+  const updates = receivedBalance
+    ? { paid: true, paidAt: new Date().toISOString(), balance: 0, fuelExpense: fuel, tollExpense: toll, driverExpense: driver }
+    : { fuelExpense: fuel, tollExpense: toll, driverExpense: driver };
+
   try {
     await FS.update(uid, 'trips', tripData.id, updates);
   } catch (err) {
@@ -395,11 +408,13 @@ async function executePaidConfirm() {
   }
   Object.assign(tripData, updates);
 
-  // Stop counter
-  if (counterInterval) clearInterval(counterInterval);
-
   closeSubModal('expense-wizard');
-  showToast('✅ Payment and expenses saved!', 'success');
+  if (receivedBalance) {
+    if (counterInterval) clearInterval(counterInterval);
+    showToast('✅ Payment and expenses saved!', 'success');
+  } else {
+    showToast('Expenses saved. Balance is still marked as pending.', 'info');
+  }
   setTimeout(() => location.reload(), 1000);
 }
 

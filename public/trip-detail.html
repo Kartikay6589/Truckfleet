@@ -301,12 +301,25 @@
 
       <!-- Step 4: Confirm -->
       <div id="expense-step-4" style="display:none">
-        <p class="modal-confirm-text"><strong>Step 4 of 4:</strong> Confirm Payment & Expenses Summary</p>
+        <p class="modal-confirm-text"><strong>Step 4 of 4:</strong> Confirm Expenses Summary</p>
         <div class="pay-confirm-summary" id="pay-confirm-summary">
           <!-- populated by JS -->
         </div>
-        <div class="confirm-actions" style="margin-top:1.5rem">
-          <button class="btn-confirm-register" id="btn-confirm-payment" onclick="executePaidConfirm()">✅ Confirm & Save Trip</button>
+        <!-- Shown only when there's an actual balance to confirm -->
+        <div id="balance-confirm-group">
+          <p class="modal-confirm-text" id="balance-received-question" style="margin-top:1.25rem; font-weight:700;">
+            Have you actually received the Balance Remaining shown above?
+          </p>
+          <div class="confirm-actions" style="margin-top:.75rem">
+            <button class="btn-confirm-register" id="btn-confirm-payment" onclick="executePaidConfirm(true)">✅ Yes, Balance Received</button>
+            <button class="btn-confirm-edit" id="btn-not-received" onclick="executePaidConfirm(false)" style="color:var(--danger); border-color:rgba(252,129,129,.35);">❌ No, Not Received Yet</button>
+          </div>
+        </div>
+        <!-- Shown instead when the advance already covers the full amount — nothing left to confirm receiving -->
+        <div class="confirm-actions" id="already-settled-group" style="display:none; margin-top:1.25rem;">
+          <button class="btn-confirm-register" onclick="executePaidConfirm(true)">✅ Save Trip</button>
+        </div>
+        <div class="confirm-actions" style="margin-top:.5rem">
           <button class="btn-confirm-edit" onclick="prevExpenseStep(3)">⬅️ Back</button>
         </div>
       </div>
