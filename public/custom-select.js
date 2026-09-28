@@ -114,3 +114,10 @@ window.refreshCustomSelect = refreshCustomSelect;
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('select').forEach(initCustomSelect);
 });
+
+// Close any open dropdown when clicking anywhere outside it — this listener
+// lives here (not per-select) so it also covers dropdowns rebuilt later by
+// refreshCustomSelect.
+document.addEventListener('click', () => {
+  document.querySelectorAll('.custom-select-wrapper.open').forEach(w => w.classList.remove('open'));
+});
