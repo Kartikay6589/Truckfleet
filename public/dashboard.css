@@ -937,7 +937,10 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   cursor:pointer;transition:all var(--t-m);
   text-decoration:none;color:inherit;
 }
-.trip-card:hover{background:var(--bg-card-h);border-color:var(--accent);transform:translateX(4px);box-shadow:var(--sh-card);}
+/* No transform here on purpose: a transformed ancestor becomes the containing
+   block for any position:fixed descendant (our row-menu dropdown), which made
+   the dropdown render relative to this card instead of the viewport. */
+.trip-card:hover{background:var(--bg-card-h);border-color:var(--accent);box-shadow:var(--sh-card);}
 .tc-num{
   width:36px;height:36px;border-radius:50%;
   background:rgba(var(--accent-rgb),0.12);border:1.5px solid rgba(var(--accent-rgb),0.2);
