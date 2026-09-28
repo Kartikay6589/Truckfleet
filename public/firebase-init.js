@@ -96,6 +96,31 @@ window.FS = {
     return fbDb.collection('users').doc(uid);
   },
 
+  /* ── Driver <-> Fleet Owner linking ──
+     A Fleet Owner creates one of these (keyed by the driver's email) when
+     adding a driver with an email address. When that person eventually
+     signs up or signs in with role "driver", driver.js looks this up by
+     their own email and claims it — that's the only way a driver account
+     ever gets access to a specific owner's trips (see firestore.rules). */
+  driverInviteDoc(email) {
+    return fbDb.collection('driverInvites').doc(email.trim().toLowerCase());
+  },
+
+  async createDriverInvite(email, ownerUid, driverId) {
+    await this.driverInviteDoc(email).set({
+      ownerUid, driverId, driverUid: null, createdAt: new Date().toISOString()
+    });
+  },
+
+  async getDriverInvite(email) {
+    const snap = await this.driverInviteDoc(email).get();
+    return snap.exists ? snap.data() : null;
+  },
+
+  async claimDriverInvite(email, driverUid) {
+    await this.driverInviteDoc(email).update({ driverUid });
+  },
+
   /* Creates the users/{uid} profile document the first time someone signs
      in; leaves it alone on every later sign-in. */
   async ensureUserProfile(user, role) {

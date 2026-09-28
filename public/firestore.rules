@@ -3,6 +3,13 @@ rules_version = '2';
 // Every account's data lives under users/{uid}/... — these rules make sure
 // a signed-in user can only ever read or write their OWN documents, and
 // nobody who isn't signed in can touch anything.
+//
+// Driver linkage: a Fleet Owner's driver record (users/{ownerUid}/drivers/{id})
+// is just a name+license until the actual driver signs up and claims a
+// driverInvites/{email} doc the owner created for them. Once a trip is
+// assigned to that driver's uid, a small carve-out below lets the driver
+// read that ONE trip and flip its status — nothing else in the owner's
+// account is ever exposed to them.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
@@ -14,9 +21,58 @@ service cloud.firestore {
       allow update: if request.auth != null && request.auth.uid == userId
                     && request.resource.data.role == resource.data.role;
 
-      match /{collection}/{docId} {
+      // Recursive wildcard so the owner keeps full access to every nested
+      // subcollection at any depth (vehicles, drivers, trips,
+      // trips/{id}/expenses, trips/{id}/issues, trips/{id}/podSubmissions,
+      // etc.) — the more specific driver-access rules below simply add to
+      // this, they never take away from it.
+      match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+
+      match /trips/{tripId} {
+        // The assigned driver can see this one trip...
+        allow read: if request.auth != null && resource.data.assignedDriverUid == request.auth.uid;
+        // ...and can only ever change its status, never any money/route field.
+        allow update: if request.auth != null
+                      && resource.data.assignedDriverUid == request.auth.uid
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['driverStatus', 'driverStatusUpdatedAt']);
+
+        // Driver can log expenses / report issues / submit a POD against a
+        // trip assigned to them — write-once records, never edited or
+        // deleted from the driver side, and readable only by the driver who
+        // owns them (the owner already has full access via the recursive
+        // rule above).
+        match /expenses/{expenseId} {
+          allow read, create: if request.auth != null
+            && get(/databases/$(database)/documents/users/$(userId)/trips/$(tripId)).data.assignedDriverUid == request.auth.uid;
+        }
+        match /issues/{issueId} {
+          allow read, create: if request.auth != null
+            && get(/databases/$(database)/documents/users/$(userId)/trips/$(tripId)).data.assignedDriverUid == request.auth.uid;
+        }
+        match /podSubmissions/{podId} {
+          allow read, create: if request.auth != null
+            && get(/databases/$(database)/documents/users/$(userId)/trips/$(tripId)).data.assignedDriverUid == request.auth.uid;
+        }
+      }
+    }
+
+    // A Fleet Owner creates one of these when adding a driver with an email;
+    // the invited email's own account is the only one that may ever claim
+    // it (set driverUid once), and only while it's still unclaimed.
+    match /driverInvites/{email} {
+      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
+      allow read: if request.auth != null
+        && (resource.data.ownerUid == request.auth.uid || request.auth.token.email.lower() == email);
+      allow update: if request.auth != null
+        && request.auth.token.email.lower() == email
+        && resource.data.driverUid == null
+        && request.resource.data.driverUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.driverId == resource.data.driverId;
+      allow delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
     }
   }
 }

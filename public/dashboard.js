@@ -66,6 +66,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const profile = await FS.ensureUserProfile(user);
   currentUser = Object.assign({ id: uid }, profile);
+  renderSidemenuIdentity();
+
+  // A driver account never touches the Fleet Owner's vehicles/trips/etc.
+  // data at all — it only ever sees the one trip an owner has assigned to
+  // it, via driver.js. See firestore.rules for what makes this safe.
+  if (currentUser.role === 'driver') {
+    await initDriverDashboard();
+    document.body.classList.remove('app-loading');
+    return;
+  }
 
   const [vehicles, drivers, trips, brokerTrips, notifications] = await Promise.all([
     FS.getAll(uid, 'vehicles'),
@@ -95,6 +105,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Real data is in and rendered — safe to reveal the page now
   document.body.classList.remove('app-loading');
 });
+
+function renderSidemenuIdentity() {
+  const lastNameStr = currentUser.lastName ? ` ${currentUser.lastName}` : '';
+  document.getElementById('sidemenu-name').textContent = `${currentUser.firstName}${lastNameStr}`;
+  document.getElementById('sidemenu-role').textContent = fmtRole(currentUser.role);
+  document.getElementById('sidemenu-avatar').textContent = (currentUser.firstName || 'U')[0].toUpperCase();
+}
 
 /* ── State helpers — currentX arrays are the local cache; every mutation
    below writes to Firestore first and only updates the cache once it succeeds ── */
@@ -655,6 +672,7 @@ async function handleAddDriver(e) {
   e.preventDefault();
   const name = document.getElementById('drv-name').value.trim();
   const license = document.getElementById('drv-license').value.trim().toUpperCase();
+  const email = document.getElementById('drv-email').value.trim().toLowerCase();
 
   if (!/^[A-Z0-9]+$/.test(license)) {
     showFormError('drv-error', '⚠️ Driving License can only contain uppercase alphabets and numbers.');
@@ -668,13 +686,27 @@ async function handleAddDriver(e) {
 
   let driver;
   try {
-    driver = await FS.add(uid, 'drivers', { name, license, addedAt: new Date().toISOString() });
+    driver = await FS.add(uid, 'drivers', { name, license, email: email || '', addedAt: new Date().toISOString() });
   } catch (err) {
     showFormError('drv-error', `⚠️ ${err.message || 'Could not add this driver.'}`);
     return;
   }
 
   currentDrivers.push(driver);
+
+  // The driver record itself is saved either way — the invite is a
+  // separate, best-effort step so its failure (e.g. rules not deployed
+  // yet, a flaky connection) never leaves a "phantom" driver the UI thinks
+  // failed to save. Re-adding the email later (or re-saving this driver)
+  // can always retry the invite.
+  if (email) {
+    try {
+      await FS.createDriverInvite(email, uid, driver.id);
+    } catch (err) {
+      showToast(`Driver saved, but couldn't set up app access yet: ${err.message || 'unknown error'}`, 'error');
+    }
+  }
+
   await FS.addNotification(uid, `New driver added: ${name}`);
   refreshNotifications();
   document.getElementById('form-add-driver').reset();
@@ -690,7 +722,7 @@ function renderDriversTable() {
   count.textContent = `${drivers.length} driver${drivers.length !== 1 ? 's' : ''} registered`;
 
   if (drivers.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No drivers registered yet. Click "Add Driver" to get started.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No drivers registered yet. Click "Add Driver" to get started.</td></tr>`;
     return;
   }
   tbody.innerHTML = drivers.map((d, i) => `
@@ -698,6 +730,7 @@ function renderDriversTable() {
       <td>${i + 1}</td>
       <td><strong>${d.name}</strong></td>
       <td>${d.license}</td>
+      <td>${d.email ? '<span class="type-badge">✉️ Invited</span>' : '<span class="type-badge" style="opacity:.6">No email</span>'}</td>
       <td>${new Date(d.addedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
       <td><button class="btn-del" onclick="deleteDriver('${d.id}')" title="Delete">🗑️</button></td>
     </tr>
@@ -844,6 +877,9 @@ function startTripWizard() {
   document.getElementById('trip-to').value      = '';
   document.getElementById('trip-total').value   = '';
   document.getElementById('trip-advance').value = '';
+  document.getElementById('trip-cargo-info').value = '';
+  document.getElementById('trip-party-name').value = '';
+  document.getElementById('trip-party-phone').value = '';
   gotoWizardStep(1);
 }
 
@@ -892,7 +928,31 @@ function gotoWizardStep(step) {
 
   // Build step-specific UI
   if (step === 1) buildVehicleSelector();
-  if (step === 8) buildConfirmCard();
+  if (step === 8) { buildConfirmCard(); populateTripDriverSelect(); }
+}
+
+/* Only drivers who've actually signed up and claimed their invite (see
+   firebase-init.js's claimDriverInvite / driver.js) can be assigned to a
+   trip — assigning an uncleared invite would leave assignedDriverUid unset
+   and the trip would never become visible to them. */
+async function populateTripDriverSelect() {
+  const sel = document.getElementById('trip-assign-driver');
+  const driversWithEmail = currentDrivers.filter(d => d.email);
+  if (driversWithEmail.length === 0) return;
+
+  const invites = await Promise.all(driversWithEmail.map(d => FS.getDriverInvite(d.email).catch(() => null)));
+  const linked = driversWithEmail
+    .map((d, i) => ({ driver: d, invite: invites[i] }))
+    .filter(x => x.invite && x.invite.driverUid);
+
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Don\'t assign — I\'ll drive it / decide later</option>' +
+    linked.map(x => `<option value="${x.invite.driverUid}" data-name="${TFP.esc(x.driver.name)}">${TFP.esc(x.driver.name)} (${TFP.esc(x.driver.license)})</option>`).join('');
+  if ([...sel.options].some(o => o.value === current)) sel.value = current;
+
+  // custom-select.js built this dropdown's visible UI from whatever options
+  // existed at page load — refresh it now that the option list changed.
+  if (window.refreshCustomSelect) refreshCustomSelect(sel);
 }
 
 function wizardBack() {
@@ -1133,6 +1193,10 @@ async function confirmTrip() {
   const netTotal = wizard.total - tdsAmount + gstAmount;
   const balance = netTotal - wizard.advance;
 
+  const assignSelect = document.getElementById('trip-assign-driver');
+  const assignedDriverUid = assignSelect.value || null;
+  const assignedDriverName = assignedDriverUid ? assignSelect.selectedOptions[0].dataset.name : null;
+
   let trip;
   try {
     trip = await FS.add(uid, 'trips', {
@@ -1156,12 +1220,21 @@ async function confirmTrip() {
       fuelExpense: 0,
       tollExpense: 0,
       driverExpense: 0,
+      cargoInfo: document.getElementById('trip-cargo-info').value.trim(),
+      partyName: document.getElementById('trip-party-name').value.trim(),
+      partyPhone: document.getElementById('trip-party-phone').value.trim(),
+      assignedDriverUid,
+      assignedDriverName,
+      driverStatus: assignedDriverUid ? 'Assigned' : null,
+      driverStatusUpdatedAt: null,
       registeredAt: new Date().toISOString()
     });
   } catch (err) {
     showToast(err.message || 'Could not register this trip.', 'error');
     return;
   }
+
+  if (assignedDriverUid) await FS.addNotification(uid, `Trip assigned to ${assignedDriverName}: ${wizard.from} → ${wizard.to}`);
 
   currentTrips.push(trip);
 
@@ -1239,7 +1312,7 @@ function renderTripsList() {
         <div class="tc-num">${cycleNum}</div>
         <div class="tc-main">
           <div class="tc-route">📍 ${t.from} → ${t.to}</div>
-          <div class="tc-vehicle">🚛 ${t.vehicleNumber} · ${t.vehicleType}</div>
+          <div class="tc-vehicle">🚛 ${t.vehicleNumber} · ${t.vehicleType}${t.assignedDriverUid ? ` · 🧑‍✈️ ${t.assignedDriverName} (${t.driverStatus || 'Assigned'})` : ''}</div>
         </div>
         <div class="tc-right">
           <div class="tc-amount">₹${t.total.toLocaleString('en-IN')}</div>

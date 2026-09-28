@@ -120,6 +120,11 @@
             <span class="lni-icon">🤝</span>
             <span class="lni-label">Brokered Trips</span>
           </button>
+          <!-- Driver accounts see only this one — see applyRoleBasedNav() in driver.js -->
+          <button class="left-nav-item" id="nav-driver" style="display:none" onclick="switchView('driver')" title="My Duty">
+            <span class="lni-icon">🚚</span>
+            <span class="lni-label">My Duty</span>
+          </button>
         </nav>
       </div>
     </aside>
@@ -341,7 +346,12 @@
                 <label for="drv-license">🪪 Driving License</label>
                 <input type="text" id="drv-license" placeholder="e.g. HR06201100" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" required />
               </div>
+              <div class="avp-field">
+                <label for="drv-email">✉️ Driver's Email (for app access)</label>
+                <input type="email" id="drv-email" placeholder="driver@example.com" />
+              </div>
             </div>
+            <p class="avp-hint">If the driver signs up on this app with this email and role "Truck Driver", they'll automatically see trips you assign them — no email means they can't use the driver app yet.</p>
             <button type="submit" class="btn-submit-vehicle">➕ Add Driver</button>
           </form>
         </div>
@@ -366,6 +376,7 @@
                 <th>#</th>
                 <th>Driver Name</th>
                 <th>Driving License</th>
+                <th>App Access</th>
                 <th>Added On</th>
                 <th>Actions</th>
               </tr>
@@ -557,6 +568,29 @@
               <h2 class="wp-title">Confirm Trip Details</h2>
               <p class="wp-desc">Review everything before registering this trip.</p>
               <div class="confirm-card" id="confirm-card"></div>
+
+              <div class="avp-fields" style="margin-top:1.5rem;">
+                <div class="avp-field">
+                  <label for="trip-cargo-info">📦 Cargo &amp; Weight (optional)</label>
+                  <input type="text" id="trip-cargo-info" placeholder="e.g. Electronics - 12.5 Tons" />
+                </div>
+                <div class="avp-field">
+                  <label for="trip-party-name">🏢 Party Contact Name (optional)</label>
+                  <input type="text" id="trip-party-name" placeholder="e.g. Sharma Logistics" />
+                </div>
+                <div class="avp-field">
+                  <label for="trip-party-phone">📞 Party Phone (optional)</label>
+                  <input type="tel" id="trip-party-phone" placeholder="e.g. 9876543210" oninput="this.value = this.value.replace(/[^0-9+]/g, '')" />
+                </div>
+                <div class="avp-field">
+                  <label for="trip-assign-driver">🧑‍✈️ Assign to Driver (optional)</label>
+                  <select id="trip-assign-driver">
+                    <option value="">Don't assign — I'll drive it / decide later</option>
+                  </select>
+                </div>
+              </div>
+              <p class="avp-hint">Only drivers who've signed up on this app with their invited email show up here — see "App Access" on the Drivers tab.</p>
+
               <div class="confirm-actions">
                 <button class="btn-confirm-register" onclick="confirmTrip()">✅ Register Trip</button>
                 <button class="btn-confirm-edit" onclick="wizardBack()">✏️ Edit</button>
@@ -732,6 +766,161 @@
           </div>
           <div class="salary-status-container" id="salary-status-container">
             <!-- Status cards will be injected here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════
+           VIEW 7 — DRIVER (only ever shown to role: "driver" accounts —
+           see applyRoleBasedNav() in driver.js)
+      ══════════════════════════════ -->
+      <div class="view hidden" id="view-driver">
+
+        <!-- Not yet linked to any Fleet Owner -->
+        <div class="empty-state" id="driver-unlinked-state" style="display:none">
+          <div class="es-icon">🔗</div>
+          <h3>Not linked to a Fleet Owner yet</h3>
+          <p>Ask your Fleet Owner to add you as a driver in their "My Drivers" tab using this exact email: <strong id="driver-unlinked-email"></strong></p>
+        </div>
+
+        <div id="driver-linked-content" style="display:none">
+          <!-- Header & Duty Toggle -->
+          <div class="driver-header-card">
+            <div>
+              <h1 class="view-title" id="driver-welcome-name">Welcome, Driver</h1>
+              <p class="view-subtitle">Assigned Truck: <span class="driver-truck-badge" id="driver-truck-num">Not Assigned</span></p>
+            </div>
+            <div class="duty-toggle-wrap">
+              <span class="duty-toggle-caption">Duty Status</span>
+              <label class="duty-switch">
+                <input type="checkbox" id="duty-toggle" onchange="toggleDutyStatus(this)">
+                <span class="duty-switch-track"></span>
+              </label>
+              <span id="duty-status-label" class="duty-status-label off">OFF</span>
+            </div>
+          </div>
+
+          <!-- No active trip -->
+          <div class="empty-state" id="driver-no-trip-state" style="display:none">
+            <div class="es-icon">🗺️</div>
+            <h3>No active trip assigned</h3>
+            <p>Your Fleet Owner hasn't assigned you a trip yet. Check back once one's on the way.</p>
+          </div>
+
+          <!-- Active Trip Card -->
+          <div class="driver-trip-card" id="driver-active-trip-card" style="display:none">
+            <div class="dtc-header">
+              <h3>🚚 Active Trip Details</h3>
+              <span class="type-badge" id="trip-badge">Assigned</span>
+            </div>
+
+            <div class="dtc-info-grid">
+              <div class="dtc-info-box">
+                <span class="dtc-label">Pickup Location</span>
+                <span class="dtc-value" id="pickup-loc">—</span>
+              </div>
+              <div class="dtc-info-box">
+                <span class="dtc-label">Drop Location</span>
+                <span class="dtc-value" id="drop-loc">—</span>
+              </div>
+              <div class="dtc-info-box">
+                <span class="dtc-label">Cargo &amp; Weight</span>
+                <span class="dtc-value" id="cargo-info">—</span>
+              </div>
+              <div class="dtc-info-box dtc-party-box">
+                <div>
+                  <span class="dtc-label">Party Contact</span>
+                  <span class="dtc-value" id="party-name">—</span>
+                </div>
+                <a href="#" id="party-phone-btn" class="btn-call">📞 Call</a>
+              </div>
+            </div>
+
+            <p class="dtc-status-caption">UPDATE TRIP STATUS (ONE-TAP)</p>
+            <div class="dtc-status-btns">
+              <button class="driver-status-btn" data-status="Reached Pickup" onclick="updateTripStatus('Reached Pickup')">1. At Pickup Point</button>
+              <button class="driver-status-btn" data-status="Loading Complete" onclick="updateTripStatus('Loading Complete')">2. Loaded &amp; Left</button>
+              <button class="driver-status-btn" data-status="Reached Destination" onclick="updateTripStatus('Reached Destination')">3. At Drop Point</button>
+              <button class="driver-status-btn driver-status-btn-final" data-status="Unloaded" onclick="updateTripStatus('Unloaded')">4. Unloaded</button>
+            </div>
+          </div>
+
+          <!-- Action Grid -->
+          <div class="driver-action-grid" id="driver-action-grid" style="display:none">
+            <div class="driver-action-card">
+              <h3>⛽ Add Trip Expense</h3>
+              <form id="driver-expense-form" onsubmit="handleExpenseSubmit(event)">
+                <div class="avp-field">
+                  <label for="exp-type">Expense Type</label>
+                  <select id="exp-type" required>
+                    <option value="Diesel/Fuel">Diesel / Fuel</option>
+                    <option value="Toll Tax">Toll Tax</option>
+                    <option value="Police/Challan">Police / Challan</option>
+                    <option value="Repair/Puncture">Repair / Puncture</option>
+                    <option value="Food/Personal">Food / Personal</option>
+                  </select>
+                </div>
+                <div class="avp-field">
+                  <label for="exp-amount">Amount (₹)</label>
+                  <input type="number" id="exp-amount" placeholder="e.g. 5000" min="0" required />
+                </div>
+                <div class="avp-field">
+                  <label for="exp-receipt">Receipt Photo (optional)</label>
+                  <input type="file" id="exp-receipt" accept="image/*" />
+                </div>
+                <button type="submit" class="btn-submit-vehicle" style="width:100%;justify-content:center;margin-top:.5rem;">💾 Save Expense</button>
+              </form>
+            </div>
+
+            <div class="driver-action-card">
+              <h3>📄 Upload POD / Balty</h3>
+              <div class="pod-dropzone">
+                <input type="file" id="pod-file-input" accept="image/*,application/pdf" style="display:none" onchange="previewPOD(event)" />
+                <label for="pod-file-input" class="pod-dropzone-label">
+                  <span class="pod-icon">📸</span>
+                  <span class="pod-cta">Click to Upload Receiving Slip</span>
+                  <span class="pod-hint">PNG, JPG, PDF</span>
+                </label>
+              </div>
+              <div id="pod-preview-container" style="display:none;margin-top:1rem;">
+                <p class="pod-selected-note">✓ File selected</p>
+                <button class="btn-submit-vehicle" style="width:100%;justify-content:center;" onclick="uploadPOD()">Submit POD to Owner</button>
+              </div>
+            </div>
+
+            <div class="driver-action-card">
+              <h3>⚠️ Report Vehicle Issue</h3>
+              <form id="vehicle-issue-form" onsubmit="handleIssueReport(event)">
+                <div class="avp-field">
+                  <label for="issue-category">Issue Category</label>
+                  <select id="issue-category" required>
+                    <option value="Tyre">Tyre / Puncture</option>
+                    <option value="Engine/Heat">Engine / Heat / Oil Leak</option>
+                    <option value="Brake">Brake / Clutch</option>
+                    <option value="Electrical">Lights / Battery</option>
+                    <option value="Other">Other Emergency</option>
+                  </select>
+                </div>
+                <div class="avp-field">
+                  <label for="issue-desc">Description</label>
+                  <textarea id="issue-desc" rows="3" placeholder="Describe the problem briefly..." required></textarea>
+                </div>
+                <button type="submit" class="btn-danger-full" style="width:100%;justify-content:center;margin-top:.5rem;">🚨 Notify Fleet Owner</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Expense Ledger -->
+          <div class="vehicles-table-wrap" id="driver-expense-ledger" style="display:none">
+            <div class="vtw-toolbar">
+              <span class="vtw-count">Your Expenses On This Trip</span>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr><th>Date/Time</th><th>Type</th><th>Amount</th><th>Receipt</th></tr>
+              </thead>
+              <tbody id="driver-expense-list"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -919,6 +1108,7 @@
   <script src="firebase-init.js"></script>
 
   <script src="dashboard.js"></script>
+  <script src="driver.js"></script>
   <script src="custom-select.js"></script>
 </body>
 </html>
