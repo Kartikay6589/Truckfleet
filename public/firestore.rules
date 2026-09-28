@@ -6,7 +6,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, create, delete: if request.auth != null && request.auth.uid == userId;
+
+      // Role is chosen once at sign-up and locked from then on (see the
+      // "I am a..." picker in index.html) — no update may ever change it,
+      // even one crafted outside the app's own UI.
+      allow update: if request.auth != null && request.auth.uid == userId
+                    && request.resource.data.role == resource.data.role;
 
       match /{collection}/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;

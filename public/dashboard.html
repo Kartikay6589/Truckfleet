@@ -44,7 +44,7 @@
         <span class="sm-icon">👤</span><span>Account Details</span>
       </button>
       <button class="sidemenu-item" onclick="openSubModal('change-role')">
-        <span class="sm-icon">🏷️</span><span>Change Role</span>
+        <span class="sm-icon">🏷️</span><span>Your Role</span>
       </button>
       <button class="sidemenu-item" id="sm-theme-btn" onclick="toggleThemeFromMenu()">
         <span class="sm-icon" id="sm-theme-icon">🌙</span>
@@ -170,7 +170,7 @@
               <span class="ov-card-label">Your Role</span>
               <span class="ov-card-value" id="ov-role">Fleet Owner</span>
             </div>
-            <div class="ov-card-hint">Change →</div>
+            <div class="ov-card-hint">🔒 Locked</div>
             <div class="ov-card-glow"></div>
           </div>
           <div class="ov-card ov-card-teal" style="cursor:pointer" onclick="switchView('broker')">
@@ -202,7 +202,7 @@
             </button>
             <button class="qa-card" onclick="openSubModal('change-role')">
               <span class="qa-icon">🏷️</span>
-              <span class="qa-label">Change Role</span>
+              <span class="qa-label">Your Role</span>
             </button>
           </div>
         </div>
@@ -749,44 +749,20 @@
       <div class="sub-modal-header"><span>👤</span><h2>Account Details</h2></div>
       <div class="account-details-grid" id="account-details-grid"></div>
       <button class="btn-primary-full" style="margin-top:1.25rem" onclick="closeSubModal('account-details');openSubModal('change-role')">
-        🏷️ Change Role
+        🏷️ View Role
       </button>
     </div>
   </div>
 
-  <!-- Change Role -->
+  <!-- Your Role (read-only — role is locked at sign-up, see firestore.rules) -->
   <div class="sub-modal-overlay" id="modal-change-role" onclick="closeSubModalOnOverlay(event,'change-role')">
     <div class="sub-modal">
       <button class="modal-close" onclick="closeSubModal('change-role')">&times;</button>
-      <div class="sub-modal-header"><span>🏷️</span><h2>Change Role</h2></div>
-      <p class="modal-confirm-text">Select your role. Only the role field will be updated.</p>
+      <div class="sub-modal-header"><span>🏷️</span><h2>Your Role</h2></div>
+      <p class="modal-confirm-text">This was set when you signed up and can't be changed.</p>
       <div class="role-option-list" id="role-option-list">
-        <button class="role-option-btn" id="role-fleet-owner" onclick="selectRole('fleet-owner')">
-          <span class="role-opt-icon">🚛</span>
-          <div class="role-opt-info">
-            <span class="role-opt-name">Fleet Owner / Truck Owner</span>
-            <span class="role-opt-desc">You own trucks and take delivery contracts</span>
-          </div>
-          <span class="role-opt-check" id="rc-fleet-owner"></span>
-        </button>
-        <button class="role-option-btn" id="role-company" onclick="selectRole('company')">
-          <span class="role-opt-icon">🏢</span>
-          <div class="role-opt-info">
-            <span class="role-opt-name">Company</span>
-            <span class="role-opt-desc">You hire trucks to move your goods</span>
-          </div>
-          <span class="role-opt-check" id="rc-company"></span>
-        </button>
-        <button class="role-option-btn" id="role-driver" onclick="selectRole('driver')">
-          <span class="role-opt-icon">👨‍✈️</span>
-          <div class="role-opt-info">
-            <span class="role-opt-name">Truck Driver</span>
-            <span class="role-opt-desc">You drive trucks for fleet owners</span>
-          </div>
-          <span class="role-opt-check" id="rc-driver"></span>
-        </button>
+        <!-- Only the current role is rendered here, in a non-interactive card — see renderRoleView() -->
       </div>
-      <button class="btn-primary-full" onclick="saveRole()" style="margin-top:1.25rem">💾 Save Role</button>
     </div>
   </div>
 
@@ -879,7 +855,7 @@
       <div class="help-content">
         <div class="help-item"><strong>🚛 Add a Vehicle</strong><p>Navigate to "My Vehicles" tab → click "Add Vehicle" → fill in the form.</p></div>
         <div class="help-item"><strong>🗺️ Register a Trip</strong><p>Go to "Trip Registration" → click "Add New Trip" → complete the 5-step wizard.</p></div>
-        <div class="help-item"><strong>🏷️ Change Role</strong><p>Click your role card on the dashboard or use the hamburger menu.</p></div>
+        <div class="help-item"><strong>🏷️ Your Role</strong><p>Chosen at sign-up and locked — click your role card or use the hamburger menu to view it.</p></div>
         <div class="help-item"><strong>📞 Support</strong><p>Email: <a href="mailto:crazytyagi01@gmail.com" style="color:var(--accent)" data-config="supportEmail">crazytyagi01@gmail.com</a><br>Phone: <a href="tel:+919971690250" style="color:var(--accent)" data-config="supportPhone">+91 9971690250</a></p></div>
       </div>
     </div>

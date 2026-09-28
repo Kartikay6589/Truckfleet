@@ -262,37 +262,28 @@ document.addEventListener('mouseout', () => cc.classList.remove('hover'));
 /* ════════════════════════════════════════════
    DASHBOARD INIT
 ════════════════════════════════════════════ */
-let selectedRole = '';
+/* Role is chosen once at sign-up (see index.html's "I am a..." picker) and
+   locked from then on — firestore.rules rejects any update that touches the
+   role field, so this modal only ever displays it, never edits it. */
+const ROLE_INFO = {
+  'fleet-owner': { icon: '🚛', name: 'Fleet Owner / Truck Owner', desc: 'You own trucks and take delivery contracts' },
+  'company':     { icon: '🏢', name: 'Company', desc: 'You hire trucks to move your goods' },
+  'driver':      { icon: '👨‍✈️', name: 'Truck Driver', desc: 'You drive trucks for fleet owners' }
+};
 
-function selectRole(role) {
-  selectedRole = role;
-  document.querySelectorAll('.role-option-btn').forEach(btn => {
-    btn.classList.remove('selected');
-    btn.querySelector('.role-opt-check').innerHTML = '';
-  });
-  
-  const activeBtn = document.getElementById(`role-${role}`);
-  if (activeBtn) {
-    activeBtn.classList.add('selected');
-    activeBtn.querySelector('.role-opt-check').innerHTML = '●';
-  }
-}
-
-async function saveRole() {
-  if (!selectedRole) return;
-
-  try {
-    await FS.userDoc(uid).update({ role: selectedRole });
-  } catch (err) {
-    showToast(err.message || 'Could not update your role.', 'error');
-    return;
-  }
-  currentUser.role = selectedRole;
-
-  document.getElementById('ov-role').textContent = fmtRole(selectedRole);
-  document.getElementById('sidemenu-role').textContent = fmtRole(selectedRole);
-  closeSubModal('change-role');
-  showToast(`Role updated to ${fmtRole(selectedRole)}!`, 'success');
+function renderRoleView() {
+  const role = ROLE_INFO[currentUser.role] ? currentUser.role : 'fleet-owner';
+  const info = ROLE_INFO[role];
+  document.getElementById('role-option-list').innerHTML = `
+    <div class="role-option-btn selected" style="cursor:default;">
+      <span class="role-opt-icon">${info.icon}</span>
+      <div class="role-opt-info">
+        <span class="role-opt-name">${info.name}</span>
+        <span class="role-opt-desc">${info.desc}</span>
+      </div>
+      <span class="role-opt-check">🔒</span>
+    </div>
+  `;
 }
 
 function initDashboard() {
@@ -1683,7 +1674,7 @@ function openSubModal(type) {
   closeSideMenu();
   if (type === 'account-details') renderAccountDetails();
   if (type === 'notifications')   renderNotifications();
-  if (type === 'change-role')     selectRole(currentUser.role || 'fleet-owner');
+  if (type === 'change-role')     renderRoleView();
   if (type === 'appearance')      renderAppearanceModal();
   document.getElementById(`modal-${type}`).classList.add('active');
   document.body.style.overflow = 'hidden';
