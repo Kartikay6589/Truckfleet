@@ -805,6 +805,8 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   transition:all var(--t-f);width:100%;resize:vertical;
 }
 .avp-field input::placeholder,.avp-field textarea::placeholder{color:var(--text3);}
+[data-theme="dark"] input[type="date"]{color-scheme:dark;}
+[data-theme="light"] input[type="date"]{color-scheme:light;}
 .avp-field input:focus,.avp-field select:focus,.avp-field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);background:var(--bg-card-h);}
 
 .veh-subtype-btns {
@@ -892,6 +894,8 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
 }
 .btn-del{background:none;color:var(--text3);font-size:1rem;padding:.2rem .5rem;border-radius:4px;transition:all var(--t-f);}
 .btn-del:hover{color:var(--red);background:var(--red-bg);}
+.td-row-actions{display:flex;align-items:center;gap:.35rem;white-space:nowrap;}
+.btn-edit-row:hover{color:var(--accent);background:rgba(var(--accent-rgb),0.12);}
 
 /* ════════════════════════════════
    TRIP REGISTRATION VIEW

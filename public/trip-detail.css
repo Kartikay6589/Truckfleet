@@ -153,6 +153,9 @@
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 1.5rem;
+  min-width: 0; /* grid items default to min-width:auto, which let a native
+                   <input type="date">'s intrinsic size push this wider than
+                   the viewport on phones — see .td-edit-input */
 }
 .td-card-title {
   font-size: .9rem; font-weight: 700;
@@ -176,6 +179,27 @@
   background: linear-gradient(to bottom, var(--accent), var(--green));
   opacity: .4;
 }
+
+/* Editable route/date/money fields — same visual weight as the read-only
+   .td-rp-value / .td-pay-value they replace, so editing a trip doesn't look
+   any different from just viewing one. */
+.td-rp-info-edit { flex: 1; min-width: 0; }
+.td-edit-input{
+  width: 100%; margin-top: .3rem; background: var(--bg-input);
+  border: 1px solid var(--border); color: var(--heading);
+  padding: .4rem .6rem; border-radius: var(--r-sm);
+  font-size: 1rem; font-weight: 700; font-family: 'Outfit', sans-serif; outline: none;
+}
+.td-edit-input:focus{ border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+[data-theme="dark"] .td-edit-input[type="date"]{ color-scheme: dark; }
+[data-theme="light"] .td-edit-input[type="date"]{ color-scheme: light; }
+.td-money-input{
+  background: var(--bg-input); border: 1px solid var(--border); color: var(--heading);
+  padding: .25rem .5rem; border-radius: var(--r-sm); width: 100px;
+  text-align: right; font-size: 1rem; font-family: 'Outfit', sans-serif; outline: none;
+}
+.td-money-input:focus{ border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.td-veh-input{ width: auto; max-width: 60%; text-align: right; margin-top: 0; flex-shrink: 1; min-width: 0; }
 
 /* Payment card */
 .td-pay-rows { display: flex; flex-direction: column; gap: .65rem; }

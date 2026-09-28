@@ -44,6 +44,24 @@ function summarizeImport(parts, verb) {
   return parts.length ? `Import complete: ${parts.join(', ')}.` : `Nothing was ${verb}.`;
 }
 
+/* ── Date helpers (shared by the Trip and Brokered Trip wizards) ──
+   <input type="date"> gives "YYYY-MM-DD" with no time-of-day. Parsing that
+   directly as `new Date("YYYY-MM-DD")` reads it as UTC midnight, which
+   renders as the PREVIOUS day in any timezone behind UTC — so it's
+   combined with the current time-of-day instead, keeping the chosen date
+   correct wherever the user actually is. */
+function todayDateInputValue() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function dateInputToISOString(dateStr) {
+  if (!dateStr) return new Date().toISOString();
+  const now = new Date();
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+}
+
 /* ── Auth guard & Global State ── */
 let currentUser = null;
 let currentVehicles = [];
@@ -392,9 +410,62 @@ function closeSideMenu() {
    MY VEHICLES — ADD VEHICLE FORM
 ════════════════════════════════════════════ */
 let addVehiclePanelOpen = false;
+let editingVehicleId = null;
+
+function resetVehicleFormToAddMode() {
+  editingVehicleId = null;
+  document.getElementById('veh-panel-title').textContent = 'Register a New Vehicle';
+  document.getElementById('veh-submit-btn').textContent = '➕ Add Vehicle';
+  document.getElementById('form-add-vehicle').reset();
+  handleVehTypeChange('');
+}
+
+/* Opens the Add Vehicle panel pre-filled with an existing vehicle's data —
+   submitting runs FS.update instead of FS.add (see handleAddVehicle). */
+function editVehicle(id) {
+  const v = currentVehicles.find(x => x.id === id);
+  if (!v) return;
+
+  editingVehicleId = id;
+  if (!addVehiclePanelOpen) toggleAddVehicleForm();
+
+  document.getElementById('veh-panel-title').textContent = `Edit Vehicle — ${v.vehicleNumber}`;
+  document.getElementById('veh-submit-btn').textContent = '💾 Save Changes';
+  document.getElementById('veh-number').value = v.vehicleNumber;
+  document.getElementById('veh-owner').value = v.ownerName;
+  document.getElementById('veh-driver').value = v.driverName || '';
+
+  if (v.vehicleType && v.vehicleType.startsWith('Container - ')) {
+    const rest = v.vehicleType.slice('Container - '.length); // e.g. "SXL 20 ft 7 MT"
+    const [cType, ...sizeParts] = rest.split(' ');
+    const cSize = sizeParts.join(' ');
+    setSelectValue('veh-type', 'Container Truck');
+    handleVehTypeChange('Container Truck');
+    selectContainerType(cType);
+    setTimeout(() => {
+      document.querySelectorAll('#container-size-btns .veh-sub-btn').forEach(btn => {
+        if (btn.textContent.trim() === cSize) selectContainerSize(cSize, btn);
+      });
+    }, 0);
+  } else {
+    setSelectValue('veh-type', v.vehicleType || '');
+    handleVehTypeChange(v.vehicleType || '');
+  }
+
+  document.getElementById('add-vehicle-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* Sets a native <select>'s value and keeps custom-select.js's visible
+   dropdown UI in sync — plain select.value alone doesn't update it. */
+function setSelectValue(selectId, value) {
+  const sel = document.getElementById(selectId);
+  sel.value = value;
+  if (sel._syncCustom) sel._syncCustom();
+}
 
 function toggleAddVehicleForm() {
   addVehiclePanelOpen = !addVehiclePanelOpen;
+  if (!addVehiclePanelOpen) resetVehicleFormToAddMode();
   const panel = document.getElementById('add-vehicle-panel');
   const btn   = document.getElementById('btn-show-add-vehicle');
   panel.style.display = addVehiclePanelOpen ? 'block' : 'none';
@@ -474,17 +545,33 @@ async function handleAddVehicle(e) {
     type = `Container - ${cType} ${cSize}`;
   }
 
-  if (currentVehicles.some(v => v.vehicleNumber === number)) {
+  if (currentVehicles.some(v => v.vehicleNumber === number && v.id !== editingVehicleId)) {
     showFormError('veh-error', '⚠️ This vehicle number is already registered.');
+    return;
+  }
+
+  const data = { vehicleNumber: number, ownerName: owner, driverName: driver, vehicleType: type };
+
+  if (editingVehicleId) {
+    try {
+      await FS.update(uid, 'vehicles', editingVehicleId, data);
+    } catch (err) {
+      showFormError('veh-error', `⚠️ ${err.message || 'Could not save these changes.'}`);
+      return;
+    }
+    const existing = currentVehicles.find(v => v.id === editingVehicleId);
+    Object.assign(existing, data);
+    await FS.addNotification(uid, `Vehicle updated: ${number}`);
+    refreshNotifications();
+    toggleAddVehicleForm();
+    renderVehiclesTable();
+    showToast(`Vehicle ${number} updated!`, 'success');
     return;
   }
 
   let vehicle;
   try {
-    vehicle = await FS.add(uid, 'vehicles', {
-      vehicleNumber: number, ownerName: owner, driverName: driver, vehicleType: type,
-      addedAt: new Date().toISOString()
-    });
+    vehicle = await FS.add(uid, 'vehicles', Object.assign({ addedAt: new Date().toISOString() }, data));
   } catch (err) {
     showFormError('veh-error', `⚠️ ${err.message || 'Could not add this vehicle.'}`);
     return;
@@ -493,8 +580,6 @@ async function handleAddVehicle(e) {
   currentVehicles.push(vehicle);
   await FS.addNotification(uid, `New vehicle added: ${number} (${type})`);
   refreshNotifications();
-  document.getElementById('form-add-vehicle').reset();
-  handleVehTypeChange('');
   toggleAddVehicleForm();
   renderVehiclesTable();
   refreshStats();
@@ -520,7 +605,10 @@ function renderVehiclesTable() {
       <td>${v.driverName || 'N/A'}</td>
       <td><span class="type-badge">${v.vehicleType}</span></td>
       <td>${new Date(v.addedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
-      <td><button class="btn-del" onclick="deleteVehicle('${v.id}')" title="Delete">🗑️</button></td>
+      <td class="td-row-actions">
+        <button class="btn-del btn-edit-row" onclick="editVehicle('${v.id}')" title="Edit">✏️</button>
+        <button class="btn-del" onclick="deleteVehicle('${v.id}')" title="Delete">🗑️</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -652,17 +740,42 @@ async function deleteVehicle(id) {
    DRIVERS TAB
 ════════════════════════════════════════════ */
 let addDriverPanelOpen = false;
+let editingDriverId = null;
+
+function resetDriverFormToAddMode() {
+  editingDriverId = null;
+  document.getElementById('drv-panel-title').textContent = 'Register a New Driver';
+  document.getElementById('drv-submit-btn').textContent = '➕ Add Driver';
+  document.getElementById('form-add-driver').reset();
+}
+
+function editDriver(id) {
+  const d = currentDrivers.find(x => x.id === id);
+  if (!d) return;
+
+  editingDriverId = id;
+  if (!addDriverPanelOpen) toggleAddDriverForm();
+
+  document.getElementById('drv-panel-title').textContent = `Edit Driver — ${d.name}`;
+  document.getElementById('drv-submit-btn').textContent = '💾 Save Changes';
+  document.getElementById('drv-name').value = d.name;
+  document.getElementById('drv-license').value = d.license;
+  document.getElementById('drv-email').value = d.email || '';
+
+  document.getElementById('add-driver-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 function toggleAddDriverForm() {
   addDriverPanelOpen = !addDriverPanelOpen;
+  if (!addDriverPanelOpen) resetDriverFormToAddMode();
   const panel = document.getElementById('add-driver-panel');
   const btn = document.getElementById('btn-show-add-driver');
-  
+
   panel.style.display = addDriverPanelOpen ? 'block' : 'none';
   if (btn) {
     btn.textContent = addDriverPanelOpen ? '✕ Close' : '➕ Add Driver';
   }
-  
+
   if (addDriverPanelOpen) {
     setTimeout(() => document.getElementById('drv-name').focus(), 100);
   }
@@ -679,8 +792,33 @@ async function handleAddDriver(e) {
     return;
   }
 
-  if (currentDrivers.some(d => d.license === license)) {
+  if (currentDrivers.some(d => d.license === license && d.id !== editingDriverId)) {
     showFormError('drv-error', '⚠️ This driving license is already registered.');
+    return;
+  }
+
+  if (editingDriverId) {
+    const existing = currentDrivers.find(d => d.id === editingDriverId);
+    const data = { name, license, email: email || '' };
+    try {
+      await FS.update(uid, 'drivers', editingDriverId, data);
+    } catch (err) {
+      showFormError('drv-error', `⚠️ ${err.message || 'Could not save these changes.'}`);
+      return;
+    }
+    // A newly-added or changed email gets its own invite so the driver can
+    // still claim access — see FS.createDriverInvite.
+    if (email && email !== existing.email) {
+      try { await FS.createDriverInvite(email, uid, editingDriverId); } catch (err) {
+        showToast(`Driver saved, but couldn't set up app access yet: ${err.message || 'unknown error'}`, 'error');
+      }
+    }
+    Object.assign(existing, data);
+    await FS.addNotification(uid, `Driver updated: ${name}`);
+    refreshNotifications();
+    toggleAddDriverForm();
+    renderDriversTable();
+    showToast(`Driver ${name} updated!`, 'success');
     return;
   }
 
@@ -732,7 +870,10 @@ function renderDriversTable() {
       <td>${d.license}</td>
       <td>${d.email ? '<span class="type-badge">✉️ Invited</span>' : '<span class="type-badge" style="opacity:.6">No email</span>'}</td>
       <td>${new Date(d.addedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
-      <td><button class="btn-del" onclick="deleteDriver('${d.id}')" title="Delete">🗑️</button></td>
+      <td class="td-row-actions">
+        <button class="btn-del btn-edit-row" onclick="editDriver('${d.id}')" title="Edit">✏️</button>
+        <button class="btn-del" onclick="deleteDriver('${d.id}')" title="Delete">🗑️</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -880,6 +1021,7 @@ function startTripWizard() {
   document.getElementById('trip-cargo-info').value = '';
   document.getElementById('trip-party-name').value = '';
   document.getElementById('trip-party-phone').value = '';
+  document.getElementById('trip-date').value = todayDateInputValue();
   gotoWizardStep(1);
 }
 
@@ -1227,7 +1369,7 @@ async function confirmTrip() {
       assignedDriverName,
       driverStatus: assignedDriverUid ? 'Assigned' : null,
       driverStatusUpdatedAt: null,
-      registeredAt: new Date().toISOString()
+      registeredAt: dateInputToISOString(document.getElementById('trip-date').value)
     });
   } catch (err) {
     showToast(err.message || 'Could not register this trip.', 'error');
@@ -1401,6 +1543,7 @@ function startBrokerWizard() {
   ['broker-company','broker-owner','broker-vehicle','broker-from','broker-to','broker-purchase','broker-sell'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  document.getElementById('broker-date').value = todayDateInputValue();
   
   bwizardGotoStep(1);
 }
@@ -1538,7 +1681,7 @@ async function confirmBrokerTrip() {
       to: bwizard.to,
       purchase: bwizard.purchase,
       sell: bwizard.sell,
-      date: new Date().toISOString()
+      date: dateInputToISOString(document.getElementById('broker-date').value)
     });
   } catch (err) {
     showToast(err.message || 'Could not register this brokered trip.', 'error');
@@ -1872,9 +2015,13 @@ function executeSalarySearch() {
 }
 
 function openSalaryModal(driverId, driverName) {
+  const driver = currentDrivers.find(d => d.id === driverId);
   document.getElementById('salary-driver-id').value = driverId;
   document.getElementById('salary-driver-name').textContent = `Driver: ${driverName}`;
-  document.getElementById('salary-amount').value = '';
+  // Prefilling with whatever's already on record turns this into an edit
+  // instead of always starting blank — re-searching the same driver (or
+  // clicking the ✏️ on their status card) now shows their current amount.
+  document.getElementById('salary-amount').value = (driver && driver.lastSalary) || '';
   openSubModal('salary');
 }
 
@@ -1962,6 +2109,7 @@ function renderSalaryStatus() {
         </div>
         <div class="sd-status-group">
           <div class="salary-status-amount">₹${d.lastSalary}</div>
+          <button class="btn-del btn-edit-row" onclick="openSalaryModal('${d.id}', '${d.name.replace(/'/g, "\\'")}')" title="Edit Salary">✏️</button>
           <label class="ss-checkbox-wrap">
             <input type="checkbox" class="ss-checkbox" ${isPaid ? 'checked' : ''} onclick="toggleSalaryPaid('${d.id}')">
             <span class="ss-check-label">${isPaid ? 'Paid' : 'Pending'}</span>

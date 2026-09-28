@@ -71,19 +71,23 @@
           <div class="td-route-visual">
             <div class="td-route-point">
               <div class="td-rp-dot dot-from"></div>
-              <div class="td-rp-info">
+              <div class="td-rp-info td-rp-info-edit">
                 <span class="td-rp-label">Pickup From</span>
-                <span class="td-rp-value" id="td-from">—</span>
+                <input type="text" class="td-edit-input" id="td-edit-from" oninput="liveUpdateField('from', this.value)" />
               </div>
             </div>
             <div class="td-route-line"></div>
             <div class="td-route-point">
               <div class="td-rp-dot dot-to"></div>
-              <div class="td-rp-info">
+              <div class="td-rp-info td-rp-info-edit">
                 <span class="td-rp-label">Deliver To</span>
-                <span class="td-rp-value" id="td-to">—</span>
+                <input type="text" class="td-edit-input" id="td-edit-to" oninput="liveUpdateField('to', this.value)" />
               </div>
             </div>
+          </div>
+          <div class="td-rp-info td-rp-info-edit" style="margin-top:1rem;">
+            <span class="td-rp-label">Deal Date</span>
+            <input type="date" class="td-edit-input" id="td-edit-date" oninput="liveUpdateDate()" />
           </div>
         </div>
 
@@ -93,11 +97,17 @@
           <div class="td-pay-rows">
             <div class="td-pay-row">
               <span class="td-pay-label">Amount Sold To Company</span>
-              <span class="td-pay-value" id="td-sell" style="color: var(--success)">₹0</span>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="color:var(--text2)">₹</span>
+                <input type="number" id="td-edit-sell" class="td-money-input" style="color:var(--success)" oninput="liveUpdateFinancials()" min="0" />
+              </div>
             </div>
             <div class="td-pay-row">
               <span class="td-pay-label">Amount Purchased From Owner</span>
-              <span class="td-pay-value" id="td-purchase" style="color: var(--danger)">₹0</span>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="color:var(--text2)">₹</span>
+                <input type="number" id="td-edit-purchase" class="td-money-input" style="color:var(--danger)" oninput="liveUpdateFinancials()" min="0" />
+              </div>
             </div>
             <div class="td-pay-divider"></div>
             <div class="td-pay-row td-pay-row-balance" style="margin-top: 0.5rem; background: var(--bg); padding: 0.75rem; border-radius: 8px;">
@@ -113,15 +123,15 @@
           <div class="td-veh-rows">
             <div class="td-veh-row">
               <span class="td-veh-label">Company Name</span>
-              <span class="td-veh-value" id="td-company">—</span>
+              <input type="text" class="td-edit-input td-veh-input" id="td-edit-company" oninput="liveUpdateField('company', this.value)" />
             </div>
             <div class="td-veh-row">
               <span class="td-veh-label">Owner Name</span>
-              <span class="td-veh-value" id="td-owner">—</span>
+              <input type="text" class="td-edit-input td-veh-input" id="td-edit-owner" oninput="liveUpdateField('owner', this.value)" />
             </div>
             <div class="td-veh-row">
               <span class="td-veh-label">Vehicle Number</span>
-              <span class="td-veh-value" id="td-veh-number">—</span>
+              <input type="text" class="td-edit-input td-veh-input" id="td-edit-veh-number" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); liveUpdateField('vehicleNumber', this.value)" />
             </div>
           </div>
         </div>

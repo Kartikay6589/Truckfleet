@@ -230,7 +230,7 @@
         <!-- Add Vehicle Form -->
         <div class="add-vehicle-panel" id="add-vehicle-panel" style="display:none">
           <div class="avp-header">
-            <h3>Register a New Vehicle</h3>
+            <h3 id="veh-panel-title">Register a New Vehicle</h3>
             <button class="avp-close" onclick="toggleAddVehicleForm()">✕</button>
           </div>
           <div class="form-error" id="veh-error"></div>
@@ -278,7 +278,7 @@
                 <input type="hidden" id="veh-container-size" value="" />
               </div>
             </div>
-            <button type="submit" class="btn-submit-vehicle">➕ Add Vehicle</button>
+            <button type="submit" class="btn-submit-vehicle" id="veh-submit-btn">➕ Add Vehicle</button>
           </form>
         </div>
 
@@ -332,7 +332,7 @@
         <!-- Add Driver Form -->
         <div class="add-vehicle-panel" id="add-driver-panel" style="display:none">
           <div class="avp-header">
-            <h3>Register a New Driver</h3>
+            <h3 id="drv-panel-title">Register a New Driver</h3>
             <button class="avp-close" onclick="toggleAddDriverForm()">✕</button>
           </div>
           <div class="form-error" id="drv-error"></div>
@@ -352,7 +352,7 @@
               </div>
             </div>
             <p class="avp-hint">If the driver signs up on this app with this email and role "Truck Driver", they'll automatically see trips you assign them — no email means they can't use the driver app yet.</p>
-            <button type="submit" class="btn-submit-vehicle">➕ Add Driver</button>
+            <button type="submit" class="btn-submit-vehicle" id="drv-submit-btn">➕ Add Driver</button>
           </form>
         </div>
 
@@ -571,6 +571,10 @@
 
               <div class="avp-fields" style="margin-top:1.5rem;">
                 <div class="avp-field">
+                  <label for="trip-date">📅 Trip Date</label>
+                  <input type="date" id="trip-date" />
+                </div>
+                <div class="avp-field">
                   <label for="trip-cargo-info">📦 Cargo &amp; Weight (optional)</label>
                   <input type="text" id="trip-cargo-info" placeholder="e.g. Electronics - 12.5 Tons" />
                 </div>
@@ -707,10 +711,17 @@
               <h2 class="wp-title">Review & Confirm</h2>
               <p class="wp-desc">Review the brokered trip details before registering.</p>
               
-              <div class="confirm-card" id="broker-confirm-card" style="text-align:left; margin-bottom:2rem;">
+              <div class="confirm-card" id="broker-confirm-card" style="text-align:left; margin-bottom:1.5rem;">
                 <!-- Built dynamically -->
               </div>
-              
+
+              <div class="avp-fields" style="grid-template-columns:1fr; margin-bottom:1.5rem;">
+                <div class="avp-field">
+                  <label for="broker-date">📅 Deal Date</label>
+                  <input type="date" id="broker-date" />
+                </div>
+              </div>
+
               <div class="confirm-actions" style="display:flex; justify-content:center; gap:1rem;">
                 <button class="btn-confirm-register" onclick="confirmBrokerTrip()">✅ Register Brokered Trip</button>
                 <button class="btn-confirm-edit" onclick="bwizardBack()">✏️ Edit</button>

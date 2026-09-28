@@ -88,19 +88,23 @@
           <div class="td-route-visual">
             <div class="td-route-point">
               <div class="td-rp-dot dot-from"></div>
-              <div class="td-rp-info">
+              <div class="td-rp-info td-rp-info-edit">
                 <span class="td-rp-label">Pickup From</span>
-                <span class="td-rp-value" id="td-from">—</span>
+                <input type="text" class="td-edit-input" id="td-edit-from" oninput="liveUpdateRoute()" />
               </div>
             </div>
             <div class="td-route-line"></div>
             <div class="td-route-point">
               <div class="td-rp-dot dot-to"></div>
-              <div class="td-rp-info">
+              <div class="td-rp-info td-rp-info-edit">
                 <span class="td-rp-label">Deliver To</span>
-                <span class="td-rp-value" id="td-to">—</span>
+                <input type="text" class="td-edit-input" id="td-edit-to" oninput="liveUpdateRoute()" />
               </div>
             </div>
+          </div>
+          <div class="td-rp-info td-rp-info-edit" style="margin-top:1rem;">
+            <span class="td-rp-label">Trip Date</span>
+            <input type="date" class="td-edit-input" id="td-edit-date" oninput="liveUpdateDate()" />
           </div>
         </div>
 
@@ -110,7 +114,10 @@
           <div class="td-pay-rows">
             <div class="td-pay-row">
               <span class="td-pay-label">Total Amount Set</span>
-              <span class="td-pay-value" id="td-total">₹0</span>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="color:var(--text2)">₹</span>
+                <input type="number" id="td-edit-total" oninput="liveUpdateTotal()" class="td-money-input" value="0" min="0" />
+              </div>
             </div>
             <div class="td-pay-row" id="td-tds-row" style="display:none;">
               <span class="td-pay-label" style="color:var(--danger)">TDS Deducted <span id="td-tds-percent"></span></span>
@@ -136,7 +143,7 @@
               <span class="td-pay-label">Advance Given</span>
               <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span style="color:var(--text2)">₹</span>
-                <input type="number" id="td-edit-advance" oninput="liveUpdateAdvance()" style="background:var(--bg-input); border:1px solid var(--border); color:var(--heading); padding:0.25rem 0.5rem; border-radius:var(--r-sm); width:100px; text-align:right; font-size:1rem; outline:none;" value="0" min="0" />
+                <input type="number" id="td-edit-advance" oninput="liveUpdateAdvance()" class="td-money-input" value="0" min="0" />
               </div>
             </div>
             <div class="td-pay-divider"></div>

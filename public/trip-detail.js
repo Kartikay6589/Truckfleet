@@ -135,63 +135,15 @@ async function loadTrip() {
     `;
   }
 
-  // Route
-  document.getElementById('td-from').textContent = trip.from;
-  document.getElementById('td-to').textContent   = trip.to;
+  // Route (editable)
+  document.getElementById('td-edit-from').value = trip.from;
+  document.getElementById('td-edit-to').value   = trip.to;
+  document.getElementById('td-edit-date').value = toDateInputValue(trip.registeredAt);
 
   // Payment
-  const balance = trip.balance !== undefined ? trip.balance : (trip.total - trip.advance);
-  
-  if (trip.tdsPercent > 0 || (trip.gstType && trip.gstType !== 'NILL')) {
-    document.getElementById('td-total').textContent = `₹${(trip.originalTotal || trip.total).toLocaleString('en-IN')}`;
-    
-    // TDS
-    if (trip.tdsPercent > 0) {
-      document.getElementById('td-tds-row').style.display = 'flex';
-      document.getElementById('td-tds-percent').textContent = `(${trip.tdsPercent}%)`;
-      document.getElementById('td-tds-amount').textContent = `- ₹${trip.tdsAmount.toLocaleString('en-IN')}`;
-    } else {
-      document.getElementById('td-tds-row').style.display = 'none';
-    }
-    
-    // GST
-    document.getElementById('td-igst-row').style.display = 'none';
-    document.getElementById('td-cgst-row').style.display = 'none';
-    document.getElementById('td-sgst-row').style.display = 'none';
-    
-    if (trip.gstType === 'IGST' && trip.gstPercent > 0) {
-      document.getElementById('td-igst-row').style.display = 'flex';
-      document.getElementById('td-igst-percent').textContent = `(${trip.gstPercent}%)`;
-      document.getElementById('td-igst-amount').textContent = `+ ₹${trip.gstAmount.toLocaleString('en-IN')}`;
-    } else if (trip.gstType === 'CSGST' && trip.gstPercent > 0) {
-      const halfRate = trip.gstPercent / 2;
-      const halfAmount = trip.gstAmount / 2;
-      
-      document.getElementById('td-cgst-row').style.display = 'flex';
-      document.getElementById('td-cgst-percent').textContent = `(${halfRate}%)`;
-      document.getElementById('td-cgst-amount').textContent = `+ ₹${halfAmount.toLocaleString('en-IN')}`;
-      
-      document.getElementById('td-sgst-row').style.display = 'flex';
-      document.getElementById('td-sgst-percent').textContent = `(${halfRate}%)`;
-      document.getElementById('td-sgst-amount').textContent = `+ ₹${halfAmount.toLocaleString('en-IN')}`;
-    }
-    
-    // Net Row
-    document.getElementById('td-net-row').style.display = 'flex';
-    document.getElementById('td-net-total').textContent = `₹${trip.total.toLocaleString('en-IN')}`;
-  } else {
-    document.getElementById('td-total').textContent = `₹${trip.total.toLocaleString('en-IN')}`;
-    document.getElementById('td-tds-row').style.display = 'none';
-    document.getElementById('td-igst-row').style.display = 'none';
-    document.getElementById('td-cgst-row').style.display = 'none';
-    document.getElementById('td-sgst-row').style.display = 'none';
-    document.getElementById('td-net-row').style.display = 'none';
-  }
+  document.getElementById('td-edit-total').value = trip.originalTotal || trip.total;
   document.getElementById('td-edit-advance').value = trip.advance || 0;
-
-  const balEl = document.getElementById('td-balance');
-  balEl.textContent = `₹${Math.abs(balance).toLocaleString('en-IN')}`;
-  balEl.className   = `td-pay-value td-balance ${trip.paid || balance <= 0 ? 'settled' : 'pending'}`;
+  renderPaymentBreakdown(trip);
 
   // Vehicle info
   document.getElementById('td-veh-number').textContent = trip.vehicleNumber || '—';
@@ -203,6 +155,7 @@ async function loadTrip() {
     new Date(trip.registeredAt).toLocaleString('en-IN', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
   // Status
+  const balance = trip.balance !== undefined ? trip.balance : (trip.total - trip.advance);
   const isPaid = trip.paid || balance <= 0;
   renderPaymentStatus(isPaid, trip, balance);
 
@@ -228,6 +181,66 @@ async function loadTrip() {
 function showError(loading, error) {
   loading.style.display = 'none';
   error.style.display   = 'block';
+}
+
+/* "YYYY-MM-DDTHH:mm:ss.sssZ" -> "YYYY-MM-DD" in LOCAL time, for populating
+   an <input type="date">. Using toISOString().slice(0,10) directly would
+   shift the date back a day for any timezone ahead of UTC in the evening. */
+function toDateInputValue(isoString) {
+  const d = new Date(isoString);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function dateInputToISOString(dateStr, referenceIso) {
+  const now = referenceIso ? new Date(referenceIso) : new Date();
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+}
+
+/* Renders the TDS/GST/Net/Balance rows from a trip's stored percentages —
+   shared by the initial page load and liveUpdateTotal(), since editing the
+   Total Amount has to recompute all of these exactly the same way the trip
+   wizard did when the trip was first created. */
+function renderPaymentBreakdown(trip) {
+  const originalTotal = trip.originalTotal || trip.total;
+  const balance = trip.balance !== undefined ? trip.balance : (trip.total - trip.advance);
+
+  if (trip.tdsPercent > 0) {
+    document.getElementById('td-tds-row').style.display = 'flex';
+    document.getElementById('td-tds-percent').textContent = `(${trip.tdsPercent}%)`;
+    document.getElementById('td-tds-amount').textContent = `- ₹${trip.tdsAmount.toLocaleString('en-IN')}`;
+  } else {
+    document.getElementById('td-tds-row').style.display = 'none';
+  }
+
+  document.getElementById('td-igst-row').style.display = 'none';
+  document.getElementById('td-cgst-row').style.display = 'none';
+  document.getElementById('td-sgst-row').style.display = 'none';
+
+  if (trip.gstType === 'IGST' && trip.gstPercent > 0) {
+    document.getElementById('td-igst-row').style.display = 'flex';
+    document.getElementById('td-igst-percent').textContent = `(${trip.gstPercent}%)`;
+    document.getElementById('td-igst-amount').textContent = `+ ₹${trip.gstAmount.toLocaleString('en-IN')}`;
+  } else if (trip.gstType === 'CSGST' && trip.gstPercent > 0) {
+    const halfRate = trip.gstPercent / 2;
+    const halfAmount = trip.gstAmount / 2;
+
+    document.getElementById('td-cgst-row').style.display = 'flex';
+    document.getElementById('td-cgst-percent').textContent = `(${halfRate}%)`;
+    document.getElementById('td-cgst-amount').textContent = `+ ₹${halfAmount.toLocaleString('en-IN')}`;
+
+    document.getElementById('td-sgst-row').style.display = 'flex';
+    document.getElementById('td-sgst-percent').textContent = `(${halfRate}%)`;
+    document.getElementById('td-sgst-amount').textContent = `+ ₹${halfAmount.toLocaleString('en-IN')}`;
+  }
+
+  const hasTdsOrGst = trip.tdsPercent > 0 || (trip.gstType && trip.gstType !== 'NILL');
+  document.getElementById('td-net-row').style.display = hasTdsOrGst ? 'flex' : 'none';
+  document.getElementById('td-net-total').textContent = `₹${trip.total.toLocaleString('en-IN')}`;
+
+  const balEl = document.getElementById('td-balance');
+  balEl.textContent = `₹${Math.abs(balance).toLocaleString('en-IN')}`;
+  balEl.className   = `td-pay-value td-balance ${trip.paid || balance <= 0 ? 'settled' : 'pending'}`;
 }
 
 /* ── Payment Status & Day Counter ── */
@@ -539,6 +552,73 @@ function liveUpdateAdvance() {
   }
 
   saveAdvance(tripData.id, advance);
+}
+
+/* ── Live Update Route (From / To) ── */
+const saveRoute = debounce(async (tripId, from, to) => {
+  try {
+    await FS.update(uid, 'trips', tripId, { from, to });
+  } catch (err) {
+    showToast(err.message || 'Could not save the route.', 'error');
+  }
+}, 500);
+
+function liveUpdateRoute() {
+  if (!tripData) return;
+  const from = document.getElementById('td-edit-from').value.trim();
+  const to = document.getElementById('td-edit-to').value.trim();
+  tripData.from = from;
+  tripData.to = to;
+  document.getElementById('td-route').textContent = `${from} → ${to}`;
+  saveRoute(tripData.id, from, to);
+}
+
+/* ── Live Update Trip Date ── */
+const saveDate = debounce(async (tripId, registeredAt) => {
+  try {
+    await FS.update(uid, 'trips', tripId, { registeredAt });
+  } catch (err) {
+    showToast(err.message || 'Could not save the trip date.', 'error');
+  }
+}, 500);
+
+function liveUpdateDate() {
+  if (!tripData) return;
+  const dateStr = document.getElementById('td-edit-date').value;
+  if (!dateStr) return;
+  const registeredAt = dateInputToISOString(dateStr, tripData.registeredAt);
+  tripData.registeredAt = registeredAt;
+  document.getElementById('td-registered').textContent =
+    new Date(registeredAt).toLocaleString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  saveDate(tripData.id, registeredAt);
+}
+
+/* ── Live Update Total Amount (recomputes TDS/GST/Net/Balance from the
+   trip's existing percentages, exactly like the trip wizard did) ── */
+const saveTotal = debounce(async (tripId, fields) => {
+  try {
+    await FS.update(uid, 'trips', tripId, fields);
+  } catch (err) {
+    showToast(err.message || 'Could not save the total amount.', 'error');
+  }
+}, 500);
+
+function liveUpdateTotal() {
+  if (!tripData) return;
+  const originalTotal = parseFloat(document.getElementById('td-edit-total').value) || 0;
+
+  const tdsAmount = Math.round((originalTotal * (tripData.tdsPercent || 0)) / 100);
+  const gstAmount = Math.round((originalTotal * (tripData.gstPercent || 0)) / 100);
+  const netTotal = originalTotal - tdsAmount + gstAmount;
+
+  tripData.originalTotal = originalTotal;
+  tripData.tdsAmount = tdsAmount;
+  tripData.gstAmount = gstAmount;
+  tripData.total = netTotal;
+  tripData.balance = netTotal - tripData.advance;
+
+  renderPaymentBreakdown(tripData);
+  saveTotal(tripData.id, { originalTotal, tdsAmount, gstAmount, total: netTotal, balance: tripData.balance });
 }
 
 const saveExpenses = debounce(async (tripId, fuelExpense, tollExpense, driverExpense) => {
