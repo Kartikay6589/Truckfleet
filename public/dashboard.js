@@ -69,6 +69,7 @@ let currentTrips = [];
 let currentBrokerTrips = [];
 let currentNotifications = [];
 let currentDrivers = [];
+let currentParties = [];
 
 // All real data lives in Firestore under users/{uid}/..., scoped to the
 // signed-in Google account — see firebase-init.js's FS helper.
@@ -95,15 +96,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  const [vehicles, drivers, trips, brokerTrips, notifications] = await Promise.all([
+  const [vehicles, drivers, parties, trips, brokerTrips, notifications] = await Promise.all([
     FS.getAll(uid, 'vehicles'),
     FS.getAll(uid, 'drivers'),
+    FS.getAll(uid, 'parties'),
     FS.getAll(uid, 'trips'),
     FS.getAll(uid, 'brokerTrips'),
     FS.getAll(uid, 'notifications')
   ]);
   currentVehicles = vehicles;
   currentDrivers = drivers;
+  currentParties = parties;
   currentTrips = trips;
   currentBrokerTrips = brokerTrips;
   currentNotifications = notifications.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 25);
@@ -112,6 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAccountDetails();
   renderVehiclesTable();
   renderDriversTable();
+  renderPartiesTable();
   renderTripsList();
   renderBrokerList();
   renderNotifications();
@@ -135,6 +139,7 @@ function renderSidemenuIdentity() {
    below writes to Firestore first and only updates the cache once it succeeds ── */
 function getVehicles() { return currentVehicles; }
 function getDrivers() { return currentDrivers; }
+function getParties() { return currentParties; }
 function getTrips() { return currentTrips; }
 function getNotifications() { return currentNotifications; }
 
@@ -421,6 +426,7 @@ function switchView(view) {
 
   if (view === 'vehicles') renderVehiclesTable();
   if (view === 'drivers')  renderDriversTable();
+  if (view === 'party')    renderPartiesTable();
   if (view === 'trips')    renderTripsList();
   if (view === 'broker')   renderBrokerList();
   if (view === 'dashboard') refreshStats();
@@ -1072,6 +1078,158 @@ async function deleteDriver(id) {
   showToast('Driver removed.', 'info');
 }
 
+/* ════════════════════════════════════════════
+   PARTY — ADD PARTY FORM
+════════════════════════════════════════════ */
+let addPartyPanelOpen = false;
+let editingPartyId = null;
+
+function resetPartyFormToAddMode() {
+  editingPartyId = null;
+  document.getElementById('party-panel-title').textContent = 'Register a New Party';
+  document.getElementById('party-submit-btn').textContent = '➕ Add Party';
+  document.getElementById('form-add-party').reset();
+}
+
+function editParty(id) {
+  const p = currentParties.find(x => x.id === id);
+  if (!p) return;
+
+  editingPartyId = id;
+  if (!addPartyPanelOpen) toggleAddPartyForm();
+
+  document.getElementById('party-panel-title').textContent = `Edit Party — ${p.name}`;
+  document.getElementById('party-submit-btn').textContent = '💾 Save Changes';
+  document.getElementById('party-name').value = p.name;
+  document.getElementById('party-contact').value = p.contact;
+  document.getElementById('party-address').value = p.address;
+  document.getElementById('party-gst').value = p.gst;
+  document.getElementById('party-builty').value = p.builtyNumber;
+
+  document.getElementById('add-party-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleAddPartyForm() {
+  addPartyPanelOpen = !addPartyPanelOpen;
+  if (!addPartyPanelOpen) resetPartyFormToAddMode();
+  const panel = document.getElementById('add-party-panel');
+  const btn = document.getElementById('btn-show-add-party');
+
+  panel.style.display = addPartyPanelOpen ? 'block' : 'none';
+  if (btn) {
+    btn.textContent = addPartyPanelOpen ? '✕ Close' : '➕ Add Party';
+  }
+
+  if (addPartyPanelOpen) {
+    setTimeout(() => document.getElementById('party-name').focus(), 100);
+  }
+}
+
+async function handleAddParty(e) {
+  e.preventDefault();
+  const name = document.getElementById('party-name').value.trim();
+  const contact = document.getElementById('party-contact').value.trim();
+  const address = document.getElementById('party-address').value.trim();
+  const gst = document.getElementById('party-gst').value.trim();
+  const builtyNumber = document.getElementById('party-builty').value.trim();
+
+  if (!/^\d{10}$/.test(contact)) {
+    showFormError('party-error', '⚠️ Party Contact Number must be exactly 10 digits.');
+    return;
+  }
+
+  if (!/^[A-Z0-9]{15}$/.test(gst)) {
+    showFormError('party-error', '⚠️ Party GST Number must be a valid 15-character GSTIN.');
+    return;
+  }
+
+  const data = { name, contact, address, gst, builtyNumber };
+
+  if (editingPartyId) {
+    try {
+      await FS.update(uid, 'parties', editingPartyId, data);
+    } catch (err) {
+      showFormError('party-error', `⚠️ ${err.message || 'Could not save these changes.'}`);
+      return;
+    }
+    const existing = currentParties.find(p => p.id === editingPartyId);
+    Object.assign(existing, data);
+    await FS.addNotification(uid, `Party updated: ${name}`);
+    refreshNotifications();
+    toggleAddPartyForm();
+    renderPartiesTable();
+    showToast(`Party ${name} updated!`, 'success');
+    return;
+  }
+
+  let party;
+  try {
+    party = await FS.add(uid, 'parties', Object.assign({ addedAt: new Date().toISOString() }, data));
+  } catch (err) {
+    showFormError('party-error', `⚠️ ${err.message || 'Could not add this party.'}`);
+    return;
+  }
+
+  currentParties.push(party);
+  await FS.addNotification(uid, `New party added: ${name}`);
+  refreshNotifications();
+  toggleAddPartyForm();
+  renderPartiesTable();
+  showToast(`Party ${name} added!`, 'success');
+}
+
+function renderPartiesTable() {
+  const parties = getParties();
+  const tbody = document.getElementById('party-tbody');
+  const count = document.getElementById('ptw-count');
+  if (!tbody || !count) return;
+  count.textContent = `${parties.length} part${parties.length !== 1 ? 'ies' : 'y'} registered`;
+
+  if (parties.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No parties registered yet. Click "Add Party" to get started.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = parties.map((p, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${p.name}</strong></td>
+      <td>${p.contact}</td>
+      <td>${p.address}</td>
+      <td>${p.gst}</td>
+      <td>${p.builtyNumber}</td>
+      <td>${new Date(p.addedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
+      <td class="td-row-actions">
+        <div class="row-menu">
+          <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Actions">⋮</button>
+          <div class="row-menu-dropdown">
+            <button class="row-menu-item" onclick="editParty('${p.id}')">✏️ Edit</button>
+            <button class="row-menu-item row-menu-danger" onclick="deleteParty('${p.id}')">🗑️ Delete</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function deleteParty(id) {
+  const confirmed = await asyncConfirm('Remove this party?');
+  if (!confirmed) return;
+  const p = currentParties.find(x => x.id === id);
+  if (!p) return;
+
+  try {
+    await FS.remove(uid, 'parties', id);
+  } catch (err) {
+    showToast(err.message || 'Could not remove this party.', 'error');
+    return;
+  }
+
+  currentParties = currentParties.filter(x => x.id !== id);
+  await FS.addNotification(uid, `Party removed: ${p.name}`);
+  refreshNotifications();
+  renderPartiesTable();
+  showToast('Party removed.', 'info');
+}
 
 /* ════════════════════════════════════════════
    TRIP WIZARD STATE
