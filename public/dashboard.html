@@ -666,25 +666,13 @@
                   <input type="date" id="trip-date" />
                 </div>
                 <div class="avp-field">
-                  <label for="trip-cargo-info">📦 Cargo &amp; Weight (optional)</label>
-                  <input type="text" id="trip-cargo-info" placeholder="e.g. Electronics - 12.5 Tons" />
-                </div>
-                <div class="avp-field">
-                  <label for="trip-party-name">🏢 Party Contact Name (optional)</label>
-                  <input type="text" id="trip-party-name" placeholder="e.g. Sharma Logistics" />
-                </div>
-                <div class="avp-field">
-                  <label for="trip-party-phone">📞 Party Phone (optional)</label>
-                  <input type="tel" id="trip-party-phone" placeholder="e.g. 9876543210" oninput="this.value = this.value.replace(/[^0-9+]/g, '')" />
-                </div>
-                <div class="avp-field">
-                  <label for="trip-assign-driver">🧑‍✈️ Assign to Driver (optional)</label>
-                  <select id="trip-assign-driver">
-                    <option value="">Don't assign — I'll drive it / decide later</option>
+                  <label for="trip-select-party">🏢 Select Party (optional)</label>
+                  <select id="trip-select-party">
+                    <option value="">No party selected</option>
                   </select>
                 </div>
               </div>
-              <p class="avp-hint">Only drivers who've signed up on this app with their invited email show up here — see "App Access" on the Drivers tab.</p>
+              <p class="avp-hint">Only parties registered on the "Party" tab show up here — add one there first if you don't see it.</p>
 
               <div class="confirm-actions">
                 <button class="btn-confirm-register" onclick="confirmTrip()">✅ Register Trip</button>

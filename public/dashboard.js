@@ -1288,9 +1288,6 @@ function startTripWizard() {
   document.getElementById('trip-to').value      = '';
   document.getElementById('trip-total').value   = '';
   document.getElementById('trip-advance').value = '';
-  document.getElementById('trip-cargo-info').value = '';
-  document.getElementById('trip-party-name').value = '';
-  document.getElementById('trip-party-phone').value = '';
   document.getElementById('trip-date').value = todayDateInputValue();
   gotoWizardStep(1);
 }
@@ -1340,26 +1337,18 @@ function gotoWizardStep(step) {
 
   // Build step-specific UI
   if (step === 1) buildVehicleSelector();
-  if (step === 8) { buildConfirmCard(); populateTripDriverSelect(); }
+  if (step === 8) { buildConfirmCard(); populateTripPartySelect(); }
 }
 
-/* Only drivers who've actually signed up and claimed their invite (see
-   firebase-init.js's claimDriverInvite / driver.js) can be assigned to a
-   trip — assigning an uncleared invite would leave assignedDriverUid unset
-   and the trip would never become visible to them. */
-async function populateTripDriverSelect() {
-  const sel = document.getElementById('trip-assign-driver');
-  const driversWithEmail = currentDrivers.filter(d => d.email);
-  if (driversWithEmail.length === 0) return;
-
-  const invites = await Promise.all(driversWithEmail.map(d => FS.getDriverInvite(d.email).catch(() => null)));
-  const linked = driversWithEmail
-    .map((d, i) => ({ driver: d, invite: invites[i] }))
-    .filter(x => x.invite && x.invite.driverUid);
+/* Lists parties registered on the Party tab so one can be picked directly
+   instead of typing name/phone by hand each time. */
+function populateTripPartySelect() {
+  const sel = document.getElementById('trip-select-party');
+  const parties = getParties();
 
   const current = sel.value;
-  sel.innerHTML = '<option value="">Don\'t assign — I\'ll drive it / decide later</option>' +
-    linked.map(x => `<option value="${x.invite.driverUid}" data-name="${TFP.esc(x.driver.name)}">${TFP.esc(x.driver.name)} (${TFP.esc(x.driver.license)})</option>`).join('');
+  sel.innerHTML = '<option value="">No party selected</option>' +
+    parties.map(p => `<option value="${p.id}" data-name="${TFP.esc(p.name)}" data-phone="${TFP.esc(p.contact)}">${TFP.esc(p.name)} (${TFP.esc(p.contact)})</option>`).join('');
   if ([...sel.options].some(o => o.value === current)) sel.value = current;
 
   // custom-select.js built this dropdown's visible UI from whatever options
@@ -1605,9 +1594,10 @@ async function confirmTrip() {
   const netTotal = wizard.total - tdsAmount + gstAmount;
   const balance = netTotal - wizard.advance;
 
-  const assignSelect = document.getElementById('trip-assign-driver');
-  const assignedDriverUid = assignSelect.value || null;
-  const assignedDriverName = assignedDriverUid ? assignSelect.selectedOptions[0].dataset.name : null;
+  const partySelect = document.getElementById('trip-select-party');
+  const partyId = partySelect.value || null;
+  const partyName = partyId ? partySelect.selectedOptions[0].dataset.name : '';
+  const partyPhone = partyId ? partySelect.selectedOptions[0].dataset.phone : '';
 
   let trip;
   try {
@@ -1632,21 +1622,15 @@ async function confirmTrip() {
       fuelExpense: 0,
       tollExpense: 0,
       driverExpense: 0,
-      cargoInfo: document.getElementById('trip-cargo-info').value.trim(),
-      partyName: document.getElementById('trip-party-name').value.trim(),
-      partyPhone: document.getElementById('trip-party-phone').value.trim(),
-      assignedDriverUid,
-      assignedDriverName,
-      driverStatus: assignedDriverUid ? 'Assigned' : null,
-      driverStatusUpdatedAt: null,
+      partyId,
+      partyName,
+      partyPhone,
       registeredAt: dateInputToISOString(document.getElementById('trip-date').value)
     });
   } catch (err) {
     showToast(err.message || 'Could not register this trip.', 'error');
     return;
   }
-
-  if (assignedDriverUid) await FS.addNotification(uid, `Trip assigned to ${assignedDriverName}: ${wizard.from} → ${wizard.to}`);
 
   currentTrips.push(trip);
 
