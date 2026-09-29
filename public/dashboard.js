@@ -1089,6 +1089,31 @@ function resetPartyFormToAddMode() {
   document.getElementById('party-panel-title').textContent = 'Register a New Party';
   document.getElementById('party-submit-btn').textContent = '➕ Add Party';
   document.getElementById('form-add-party').reset();
+  selectPartyGstType('NILL');
+}
+
+/* Party GST — same NILL/IGST/CGST+SGST category + rate pattern as the trip
+   wizard's GST step, kept as separate ids/functions so the two selectors
+   (both live in the DOM at once) never fight over each other's state. */
+function selectPartyGstType(type) {
+  document.getElementById('party-gst-type').value = type;
+  document.querySelectorAll('#party-gst-selector .gst-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`party-gst-type-${type}`).classList.add('active');
+
+  if (type === 'NILL') {
+    document.getElementById('party-gst-rate-selector').style.display = 'none';
+    document.getElementById('party-gst-rate').value = 0;
+    document.querySelectorAll('#party-gst-rate-selector .gst-rate-btn').forEach(btn => btn.classList.remove('active'));
+  } else {
+    document.getElementById('party-gst-rate-selector').style.display = 'block';
+    if (document.getElementById('party-gst-rate').value == 0) selectPartyGstRate(5);
+  }
+}
+
+function selectPartyGstRate(rate) {
+  document.getElementById('party-gst-rate').value = rate;
+  document.querySelectorAll('#party-gst-rate-selector .gst-rate-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`party-gst-rate-${rate}`).classList.add('active');
 }
 
 function editParty(id) {
@@ -1103,8 +1128,9 @@ function editParty(id) {
   document.getElementById('party-name').value = p.name;
   document.getElementById('party-contact').value = p.contact;
   document.getElementById('party-address').value = p.address;
-  document.getElementById('party-gst').value = p.gst;
   document.getElementById('party-builty').value = p.builtyNumber;
+  selectPartyGstType(p.gstType || 'NILL');
+  if (p.gstRate) selectPartyGstRate(p.gstRate);
 
   document.getElementById('add-party-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1130,7 +1156,8 @@ async function handleAddParty(e) {
   const name = document.getElementById('party-name').value.trim();
   const contact = document.getElementById('party-contact').value.trim();
   const address = document.getElementById('party-address').value.trim();
-  const gst = document.getElementById('party-gst').value.trim();
+  const gstType = document.getElementById('party-gst-type').value;
+  const gstRate = parseInt(document.getElementById('party-gst-rate').value, 10) || 0;
   const builtyNumber = document.getElementById('party-builty').value.trim();
 
   if (!/^\d{10}$/.test(contact)) {
@@ -1138,12 +1165,7 @@ async function handleAddParty(e) {
     return;
   }
 
-  if (!/^[A-Z0-9]{15}$/.test(gst)) {
-    showFormError('party-error', '⚠️ Party GST Number must be a valid 15-character GSTIN.');
-    return;
-  }
-
-  const data = { name, contact, address, gst, builtyNumber };
+  const data = { name, contact, address, gstType, gstRate, builtyNumber };
 
   if (editingPartyId) {
     try {
@@ -1178,6 +1200,12 @@ async function handleAddParty(e) {
   showToast(`Party ${name} added!`, 'success');
 }
 
+function fmtPartyGst(p) {
+  if (!p.gstType || p.gstType === 'NILL') return 'NILL';
+  const label = p.gstType === 'CSGST' ? 'CGST+SGST' : p.gstType;
+  return `${label} ${p.gstRate || 0}%`;
+}
+
 function renderPartiesTable() {
   const parties = getParties();
   const tbody = document.getElementById('party-tbody');
@@ -1195,7 +1223,7 @@ function renderPartiesTable() {
       <td><strong>${p.name}</strong></td>
       <td>${p.contact}</td>
       <td>${p.address}</td>
-      <td>${p.gst}</td>
+      <td><span class="type-badge">${fmtPartyGst(p)}</span></td>
       <td>${p.builtyNumber}</td>
       <td>${new Date(p.addedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
       <td class="td-row-actions">

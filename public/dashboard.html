@@ -428,8 +428,22 @@
                 <input type="text" id="party-address" placeholder="e.g. Sector 18, Gurugram, Haryana" required />
               </div>
               <div class="avp-field">
-                <label for="party-gst">🧾 Party GST Number</label>
-                <input type="text" id="party-gst" placeholder="e.g. 06ABCDE1234F1Z5" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" required />
+                <label>🧾 Party GST</label>
+                <div class="gst-selector" id="party-gst-selector" style="justify-content:flex-start; margin-top:0.5rem;">
+                  <button type="button" class="gst-btn active" id="party-gst-type-NILL" onclick="selectPartyGstType('NILL')">NILL</button>
+                  <button type="button" class="gst-btn" id="party-gst-type-IGST" onclick="selectPartyGstType('IGST')">IGST</button>
+                  <button type="button" class="gst-btn" id="party-gst-type-CSGST" onclick="selectPartyGstType('CSGST')">CGST + SGST</button>
+                </div>
+                <div class="gst-rate-selector" id="party-gst-rate-selector" style="display:none; margin-top:0.75rem;">
+                  <p class="wp-desc" style="margin-bottom:0.5rem; font-size:0.85rem; text-align:left;">Select GST Rate:</p>
+                  <div style="display:flex; gap:0.5rem;">
+                    <button type="button" class="gst-rate-btn active" id="party-gst-rate-5" onclick="selectPartyGstRate(5)">5%</button>
+                    <button type="button" class="gst-rate-btn" id="party-gst-rate-12" onclick="selectPartyGstRate(12)">12%</button>
+                    <button type="button" class="gst-rate-btn" id="party-gst-rate-18" onclick="selectPartyGstRate(18)">18%</button>
+                  </div>
+                </div>
+                <input type="hidden" id="party-gst-type" value="NILL" />
+                <input type="hidden" id="party-gst-rate" value="0" />
               </div>
               <div class="avp-field">
                 <label for="party-builty">📄 Builty Number</label>
@@ -452,7 +466,7 @@
                 <th>Party Name</th>
                 <th>Contact Number</th>
                 <th>Address</th>
-                <th>GST Number</th>
+                <th>Party GST</th>
                 <th>Builty Number</th>
                 <th>Added On</th>
                 <th>Action</th>
