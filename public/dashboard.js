@@ -1281,12 +1281,13 @@ function startTripWizard() {
     return;
   }
   // Reset
-  wizard = { step: 1, vehicleId: null, vehicleNumber: '', vehicleType: '', from: '', to: '', total: 0, advance: 0 };
+  wizard = { step: 1, vehicleId: null, vehicleNumber: '', vehicleType: '', from: '', to: '', total: 0, commission: 0, advance: 0 };
   document.getElementById('trip-home').style.display = 'none';
   document.getElementById('trip-wizard').style.display = 'block';
   document.getElementById('trip-from').value    = '';
   document.getElementById('trip-to').value      = '';
   document.getElementById('trip-total').value   = '';
+  document.getElementById('trip-commission').value = '';
   document.getElementById('trip-advance').value = '';
   document.getElementById('trip-date').value = todayDateInputValue();
   gotoWizardStep(1);
@@ -1301,7 +1302,7 @@ function cancelWizard() {
 function gotoWizardStep(step) {
   wizard.step = step;
   // Show/hide pages
-  for (let i = 1; i <= 8; i++) {
+  for (let i = 1; i <= 9; i++) {
     const page = document.getElementById(`wp-${i}`);
     if (page) {
       page.classList.toggle('hidden', i !== step);
@@ -1315,7 +1316,7 @@ function gotoWizardStep(step) {
   }, 10);
 
   // Update progress steps
-  for (let i = 1; i <= 8; i++) {
+  for (let i = 1; i <= 9; i++) {
     const ws = document.getElementById(`ws-${i}`);
     if (ws) {
       ws.classList.remove('active', 'done');
@@ -1337,7 +1338,7 @@ function gotoWizardStep(step) {
 
   // Build step-specific UI
   if (step === 1) buildVehicleSelector();
-  if (step === 8) { buildConfirmCard(); populateTripPartySelect(); }
+  if (step === 9) { buildConfirmCard(); populateTripPartySelect(); }
 }
 
 /* Lists parties registered on the Party tab so one can be picked directly
@@ -1419,20 +1420,26 @@ function wizardNext(fromStep) {
     wizard.total = val;
   }
   if (fromStep === 5) {
-    const val = parseFloat(document.getElementById('trip-advance').value);
-    if (isNaN(val) || val < 0) { showWpError(5, 'Please enter a valid advance amount (0 or more).'); return; }
-    if (val > wizard.total) { showWpError(5, `❌ Advance (₹${val.toLocaleString('en-IN')}) cannot exceed total amount (₹${wizard.total.toLocaleString('en-IN')}).`); return; }
-    wizard.advance = val;
+    const val = parseFloat(document.getElementById('trip-commission').value);
+    if (isNaN(val) || val < 0) { showWpError(5, 'Please enter a valid commission amount (0 or more).'); return; }
+    if (val > wizard.total) { showWpError(5, `❌ Commission (₹${val.toLocaleString('en-IN')}) cannot exceed total amount (₹${wizard.total.toLocaleString('en-IN')}).`); return; }
+    wizard.commission = val;
   }
   if (fromStep === 6) {
+    const val = parseFloat(document.getElementById('trip-advance').value);
+    if (isNaN(val) || val < 0) { showWpError(6, 'Please enter a valid advance amount (0 or more).'); return; }
+    if (val > wizard.total) { showWpError(6, `❌ Advance (₹${val.toLocaleString('en-IN')}) cannot exceed total amount (₹${wizard.total.toLocaleString('en-IN')}).`); return; }
+    wizard.advance = val;
+  }
+  if (fromStep === 7) {
     const val = parseInt(document.getElementById('trip-tds-val').value) || 0;
     wizard.tdsRate = val;
   }
-  if (fromStep === 7) {
+  if (fromStep === 8) {
     const type = document.getElementById('trip-gst-type').value;
     const rate = parseInt(document.getElementById('trip-gst-rate').value) || 0;
     if (type !== 'NILL' && rate === 0) {
-      showWpError(7, 'Please select a GST rate (5%, 12%, or 18%).');
+      showWpError(8, 'Please select a GST rate (5%, 12%, or 18%).');
       return;
     }
     wizard.gstType = type;
@@ -1507,8 +1514,9 @@ function selectVehicle(id, number, type) {
 function buildConfirmCard() {
   const tdsAmount = Math.round((wizard.total * (wizard.tdsRate || 0)) / 100);
   const gstAmount = Math.round((wizard.total * (wizard.gstRate || 0)) / 100);
-  
-  const netTotal = wizard.total - tdsAmount + gstAmount;
+  const commission = wizard.commission || 0;
+
+  const netTotal = wizard.total - tdsAmount + gstAmount - commission;
   const balance = netTotal - wizard.advance;
   
   const balClass = balance > 0 ? 'positive' : '';
@@ -1546,10 +1554,17 @@ function buildConfirmCard() {
     `;
   }
   
-  const netFinalRow = (tdsAmount > 0 || gstAmount > 0) ? `
+  const netFinalRow = (tdsAmount > 0 || gstAmount > 0 || commission > 0) ? `
       <div class="cc-row" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.1);">
         <span class="cc-label" style="font-weight:700; color:var(--success)">Net Final Amount</span>
         <span class="cc-value" style="font-weight:700; color:var(--success)">₹${netTotal.toLocaleString('en-IN')}</span>
+      </div>
+  ` : '';
+
+  const commissionRow = commission > 0 ? `
+      <div class="cc-row">
+        <span class="cc-label" style="color:var(--danger)">Commission</span>
+        <span class="cc-value" style="color:var(--danger)">- ₹${commission.toLocaleString('en-IN')}</span>
       </div>
   ` : '';
 
@@ -1575,6 +1590,7 @@ function buildConfirmCard() {
     ${tdsRow}
     ${gstRow}
     ${netFinalRow}
+    ${commissionRow}
     <div class="cc-row" style="margin-top: 0.5rem;">
       <span class="cc-label">Advance Paid</span>
       <span class="cc-value">₹${wizard.advance.toLocaleString('en-IN')}</span>
@@ -1591,7 +1607,8 @@ function buildConfirmCard() {
 async function confirmTrip() {
   const tdsAmount = Math.round((wizard.total * (wizard.tdsRate || 0)) / 100);
   const gstAmount = Math.round((wizard.total * (wizard.gstRate || 0)) / 100);
-  const netTotal = wizard.total - tdsAmount + gstAmount;
+  const commissionAmount = wizard.commission || 0;
+  const netTotal = wizard.total - tdsAmount + gstAmount - commissionAmount;
   const balance = netTotal - wizard.advance;
 
   const partySelect = document.getElementById('trip-select-party');
@@ -1614,6 +1631,7 @@ async function confirmTrip() {
       gstType: wizard.gstType || 'NILL',
       gstPercent: wizard.gstRate || 0,
       gstAmount,
+      commissionAmount,
       total: netTotal,
       advance: wizard.advance,
       balance,

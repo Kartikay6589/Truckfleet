@@ -526,7 +526,9 @@
               <div class="wizard-step-line"></div>
               <div class="wizard-step" id="ws-7">7</div>
               <div class="wizard-step-line"></div>
-              <div class="wizard-step" id="ws-8">✓</div>
+              <div class="wizard-step" id="ws-8">8</div>
+              <div class="wizard-step-line"></div>
+              <div class="wizard-step" id="ws-9">✓</div>
             </div>
             <button class="wizard-cancel" onclick="cancelWizard()">✕ Cancel</button>
           </div>
@@ -586,8 +588,24 @@
             </div>
           </div>
 
-          <!-- Step 5: Advance -->
+          <!-- Step 5: Commission -->
           <div class="wizard-page hidden" id="wp-5">
+            <div class="wizard-page-content">
+              <div class="wp-icon">🤝</div>
+              <h2 class="wp-title">Commission</h2>
+              <p class="wp-desc">How much commission will the party ask for/charge on this trip?</p>
+              <div class="wp-input-wrap wp-input-prefix">
+                <span class="wp-prefix">₹</span>
+                <input type="number" id="trip-commission" class="wp-input" placeholder="e.g. 500" min="0" />
+              </div>
+              <div class="wp-hint">Enter 0 if no commission applies.</div>
+              <div class="wp-error" id="wp5-error"></div>
+              <button class="btn-wizard-next" onclick="wizardNext(5)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- Step 6: Advance -->
+          <div class="wizard-page hidden" id="wp-6">
             <div class="wizard-page-content">
               <div class="wp-icon">🏦</div>
               <h2 class="wp-title">Advance Given</h2>
@@ -597,38 +615,38 @@
                 <input type="number" id="trip-advance" class="wp-input" placeholder="e.g. 10000" min="0" />
               </div>
               <div class="wp-hint">Enter 0 if no advance was given.</div>
-              <div class="wp-error" id="wp5-error"></div>
-              <button class="btn-wizard-next" onclick="wizardNext(5)">Continue →</button>
+              <div class="wp-error" id="wp6-error"></div>
+              <button class="btn-wizard-next" onclick="wizardNext(6)">Continue →</button>
             </div>
           </div>
 
-          <!-- Step 6: TDS -->
-          <div class="wizard-page hidden" id="wp-6">
+          <!-- Step 7: TDS -->
+          <div class="wizard-page hidden" id="wp-7">
             <div class="wizard-page-content">
               <div class="wp-icon">✂️</div>
               <h2 class="wp-title">TDS Deduction</h2>
               <p class="wp-desc">Select the TDS percentage to deduct from the Total Amount.</p>
-              
+
               <div class="tds-selector">
                 <button class="tds-btn active" id="tds-btn-0" onclick="selectTds(0)">None (0%)</button>
                 <button class="tds-btn" id="tds-btn-1" onclick="selectTds(1)">1% TDS</button>
                 <button class="tds-btn" id="tds-btn-2" onclick="selectTds(2)">2% TDS</button>
               </div>
-              
+
               <input type="hidden" id="trip-tds-val" value="0" />
 
-              <div class="wp-error" id="wp6-error"></div>
-              <button class="btn-wizard-next" style="margin-top: 1.5rem;" onclick="wizardNext(6)">Continue →</button>
+              <div class="wp-error" id="wp7-error"></div>
+              <button class="btn-wizard-next" style="margin-top: 1.5rem;" onclick="wizardNext(7)">Continue →</button>
             </div>
           </div>
 
-          <!-- Step 7: GST -->
-          <div class="wizard-page hidden" id="wp-7">
+          <!-- Step 8: GST -->
+          <div class="wizard-page hidden" id="wp-8">
             <div class="wizard-page-content">
               <div class="wp-icon">📄</div>
               <h2 class="wp-title">GST Selection</h2>
               <p class="wp-desc">Select the applicable GST type and rate.</p>
-              
+
               <div class="gst-selector">
                 <button class="gst-btn active" id="gst-type-NILL" onclick="selectGstType('NILL')">NILL</button>
                 <button class="gst-btn" id="gst-type-IGST" onclick="selectGstType('IGST')">IGST</button>
@@ -643,17 +661,17 @@
                   <button class="gst-rate-btn" id="gst-rate-18" onclick="selectGstRate(18)">18%</button>
                 </div>
               </div>
-              
+
               <input type="hidden" id="trip-gst-type" value="NILL" />
               <input type="hidden" id="trip-gst-rate" value="0" />
 
-              <div class="wp-error" id="wp7-error"></div>
-              <button class="btn-wizard-next" style="margin-top: 1.5rem;" onclick="wizardNext(7)">Review Trip →</button>
+              <div class="wp-error" id="wp8-error"></div>
+              <button class="btn-wizard-next" style="margin-top: 1.5rem;" onclick="wizardNext(8)">Review Trip →</button>
             </div>
           </div>
 
-          <!-- Step 8: Confirm -->
-          <div class="wizard-page hidden" id="wp-8">
+          <!-- Step 9: Confirm -->
+          <div class="wizard-page hidden" id="wp-9">
             <div class="wizard-page-content">
               <div class="wp-icon">📋</div>
               <h2 class="wp-title">Confirm Trip Details</h2>

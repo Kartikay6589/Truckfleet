@@ -142,6 +142,7 @@ async function loadTrip() {
 
   // Payment
   document.getElementById('td-edit-total').value = trip.originalTotal || trip.total;
+  document.getElementById('td-edit-commission').value = trip.commissionAmount || 0;
   document.getElementById('td-edit-advance').value = trip.advance || 0;
   renderPaymentBreakdown(trip);
 
@@ -609,7 +610,8 @@ function liveUpdateTotal() {
 
   const tdsAmount = Math.round((originalTotal * (tripData.tdsPercent || 0)) / 100);
   const gstAmount = Math.round((originalTotal * (tripData.gstPercent || 0)) / 100);
-  const netTotal = originalTotal - tdsAmount + gstAmount;
+  const commissionAmount = tripData.commissionAmount || 0;
+  const netTotal = originalTotal - tdsAmount + gstAmount - commissionAmount;
 
   tripData.originalTotal = originalTotal;
   tripData.tdsAmount = tdsAmount;
@@ -619,6 +621,31 @@ function liveUpdateTotal() {
 
   renderPaymentBreakdown(tripData);
   saveTotal(tripData.id, { originalTotal, tdsAmount, gstAmount, total: netTotal, balance: tripData.balance });
+}
+
+/* ── Live Update Commission ── */
+const saveCommission = debounce(async (tripId, commissionAmount, total, balance) => {
+  try {
+    await FS.update(uid, 'trips', tripId, { commissionAmount, total, balance });
+  } catch (err) {
+    showToast(err.message || 'Could not save the commission amount.', 'error');
+  }
+}, 500);
+
+function liveUpdateCommission() {
+  if (!tripData) return;
+  const commissionAmount = parseFloat(document.getElementById('td-edit-commission').value) || 0;
+  const originalTotal = tripData.originalTotal || tripData.total;
+  const tdsAmount = tripData.tdsAmount || 0;
+  const gstAmount = tripData.gstAmount || 0;
+  const netTotal = originalTotal - tdsAmount + gstAmount - commissionAmount;
+
+  tripData.commissionAmount = commissionAmount;
+  tripData.total = netTotal;
+  tripData.balance = netTotal - tripData.advance;
+
+  renderPaymentBreakdown(tripData);
+  saveCommission(tripData.id, commissionAmount, netTotal, tripData.balance);
 }
 
 const saveExpenses = debounce(async (tripId, fuelExpense, tollExpense, driverExpense) => {

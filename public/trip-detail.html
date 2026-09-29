@@ -140,6 +140,13 @@
               <span class="td-pay-value" id="td-net-total" style="font-weight:700">₹0</span>
             </div>
             <div class="td-pay-row">
+              <span class="td-pay-label" style="color:var(--danger)">Commission</span>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="color:var(--text2)">₹</span>
+                <input type="number" id="td-edit-commission" oninput="liveUpdateCommission()" class="td-money-input" value="0" min="0" />
+              </div>
+            </div>
+            <div class="td-pay-row">
               <span class="td-pay-label">Advance Given</span>
               <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span style="color:var(--text2)">₹</span>
