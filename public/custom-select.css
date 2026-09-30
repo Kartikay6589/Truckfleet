@@ -30,6 +30,21 @@
   transition: all 0.2s ease;
 }
 
+/* The trip wizard's Pickup/Delivery state picker sits inside .wp-input-wrap,
+   where every other field (the wp-input text box) centers its text. The
+   trigger's default left-aligned text made it look out of place next to
+   those centered fields, so center it here and bump padding/size to match
+   .wp-input, without touching the trigger everywhere else on the site. */
+.wp-input-wrap .custom-select-trigger{
+  padding: 1rem 1.25rem;
+  border-width: 2px;
+  font-size: 1.05rem;
+}
+.wp-input-wrap .custom-select-trigger span:first-child{
+  flex: 1;
+  text-align: center;
+}
+
 .custom-select-wrapper.open .custom-select-trigger,
 .custom-select-trigger:focus {
   border-color: var(--accent-500, var(--accent));
