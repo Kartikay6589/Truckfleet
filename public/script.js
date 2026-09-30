@@ -258,6 +258,41 @@ window.closeCustomError = function() {
   const overlay = document.getElementById('custom-error-overlay');
   if (overlay) overlay.classList.remove('show');
 };
+
+/* ---- "Check your spam folder" notice — shown right after an OTP email
+   is sent, since a first-time automated email very often lands in Spam
+   and a silent toast is too easy to miss. ---- */
+window.showSpamNotice = function(email) {
+  let overlay = document.getElementById('otp-spam-overlay');
+
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.id = 'otp-spam-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-box">
+        <div class="cb-icon" style="font-size: 3.5rem;">📬</div>
+        <h3 class="cb-title">Check Your Inbox</h3>
+        <p class="cb-message" id="otp-spam-message"></p>
+        <div class="cb-actions">
+          <button class="cb-btn cb-btn-cancel" onclick="closeSpamNotice()">Got it</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  document.getElementById('otp-spam-message').textContent =
+    `We've sent a 6-digit code to ${email}. If it doesn't show up in your Inbox within a minute, please check your Spam/Junk folder too.`;
+
+  setTimeout(() => overlay.classList.add('show'), 10);
+};
+
+window.closeSpamNotice = function() {
+  const overlay = document.getElementById('otp-spam-overlay');
+  if (overlay) overlay.classList.remove('show');
+};
+
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   ['signin', 'signup'].forEach(t => {
@@ -265,6 +300,7 @@ document.addEventListener('keydown', (e) => {
     if (m && m.classList.contains('active')) closeModal(t);
   });
   closeCustomError();
+  closeSpamNotice();
 });
 
 /* ---- Toast ---- */
@@ -455,6 +491,7 @@ async function handleSendOtp(e) {
   otpInput.value = '';
   otpInput.focus();
   showToast(`OTP sent to ${fields.email}`, 'success');
+  showSpamNotice(fields.email);
   startOtpResendCooldown(60);
 }
 
@@ -526,6 +563,7 @@ function resetSignupOtpState() {
   if (sendBtn) { sendBtn.style.display = ''; sendBtn.disabled = false; sendBtn.textContent = 'Send OTP'; }
   if (otpSection) otpSection.style.display = 'none';
   if (otpInput) otpInput.value = '';
+  closeSpamNotice();
 }
 
 /* ---- Sign In (email/password) ---- */

@@ -1125,7 +1125,7 @@ button:hover ~ .cursor-circle,
 .confirm-overlay.show .cb-icon { opacity: 1; }
 
 .cb-title { font-size: 1.6rem; font-weight: 800; color: #fff; margin-bottom: 0.75rem; letter-spacing: -0.5px; }
-.cb-message { font-size: 1.05rem; color: #94a3b8; margin-bottom: 2.5rem; line-height: 1.6; padding: 0 1rem; }
+.cb-message { font-size: 1.05rem; color: #94a3b8; margin-bottom: 2.5rem; line-height: 1.6; padding: 0 1rem; overflow-wrap: break-word; word-break: break-word; }
 
 .cb-actions { display: flex; gap: 1rem; justify-content: center; }
 .cb-btn { 
