@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TruckFleet Pro — Reliable Freight &amp; Logistics Solutions</title>
   <script src="site-config.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script>
+    (function(){
+      emailjs.init("3uZvA03ZQYnvbPezG");
+    })();
+  </script>
   <meta name="description" content="TruckFleet Pro connects truck owners with businesses for fast, reliable goods delivery." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -319,7 +325,7 @@
         <p class="modal-subtitle">Join TruckFleet Pro and start delivering today</p>
       </div>
       <div class="form-error" id="signup-error"></div>
-      <form class="modal-form" id="form-signup" onsubmit="handleSignUp(event)" novalidate>
+      <form class="modal-form" id="form-signup" onsubmit="handleSignupFormSubmit(event)" novalidate>
         <div class="form-row">
           <div class="form-group">
             <label for="signup-firstname">First Name</label>
@@ -353,9 +359,22 @@
         </div>
         <div class="form-group">
           <label for="signup-email">Email Address</label>
-          <div class="input-wrap">
-            <span class="input-icon">✉️</span>
-            <input type="email" id="signup-email" placeholder="you@example.com" required autocomplete="email" />
+          <div class="input-with-verify">
+            <div class="input-wrap">
+              <span class="input-icon">✉️</span>
+              <input type="email" id="signup-email" placeholder="you@example.com" required autocomplete="email" />
+            </div>
+            <button type="button" class="btn-verify" id="btn-send-otp" onclick="handleSendOtp(event)">Send OTP</button>
+          </div>
+          <div class="otp-container" id="otp-section">
+            <p>Enter the 6-digit code sent to your email to verify it.</p>
+            <div class="otp-input-group">
+              <input type="text" id="otp-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="123456" autocomplete="one-time-code" />
+              <button type="button" class="btn-otp-confirm" id="btn-verify-otp" onclick="handleVerifyOtpAndSignUp(event)">Verify OTP &amp; Sign Up</button>
+            </div>
+            <button type="button" class="btn-resend-otp" id="otp-resend-btn" onclick="handleSendOtp(event)" disabled>
+              <span class="resend-icon">↻</span><span id="otp-resend-label">Resend OTP in 60s</span>
+            </button>
           </div>
         </div>
         <div class="form-group">
@@ -373,9 +392,6 @@
             I agree to the <a href="terms.html" class="form-link" target="_blank">Terms &amp; Conditions</a>
           </label>
         </div>
-        <button type="submit" class="btn btn-primary btn-full" id="btn-submit-signup">
-          Create Account <span class="btn-arrow">→</span>
-        </button>
       </form>
       <div class="auth-divider"><span>or</span></div>
       <button type="button" class="btn-google" id="btn-google-signup" onclick="continueWithGoogle()">
