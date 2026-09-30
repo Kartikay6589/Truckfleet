@@ -1435,7 +1435,7 @@ function populateTripPartySelect() {
   const parties = getParties();
 
   const current = sel.value;
-  sel.innerHTML = '<option value="">No party selected</option>' +
+  sel.innerHTML = '<option value="">Select Party</option>' +
     parties.map(p => `<option value="${p.id}" data-name="${TFP.esc(p.name)}" data-phone="${TFP.esc(p.contact)}">${TFP.esc(p.name)} (${TFP.esc(p.contact)})</option>`).join('');
   if ([...sel.options].some(o => o.value === current)) sel.value = current;
 
@@ -1713,13 +1713,18 @@ function buildConfirmCard() {
 
 /* ── Confirm & Register Trip ── */
 async function confirmTrip() {
+  const partySelect = document.getElementById('trip-select-party');
+  if (!partySelect.value) {
+    showToast('Please select a party before registering this trip.', 'error');
+    return;
+  }
+
   const tdsAmount = Math.round((wizard.total * (wizard.tdsRate || 0)) / 100);
   const gstAmount = Math.round((wizard.total * (wizard.gstRate || 0)) / 100);
   const commissionAmount = wizard.commission || 0;
   const netTotal = wizard.total - tdsAmount + gstAmount - commissionAmount;
   const balance = netTotal - wizard.advance;
 
-  const partySelect = document.getElementById('trip-select-party');
   const partyId = partySelect.value || null;
   const partyName = partyId ? partySelect.selectedOptions[0].dataset.name : '';
   const partyPhone = partyId ? partySelect.selectedOptions[0].dataset.phone : '';

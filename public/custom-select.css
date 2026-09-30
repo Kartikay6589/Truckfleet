@@ -13,7 +13,13 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 0.8rem 1rem 0.8rem 2.8rem; /* Matches .input-wrap input padding */
+  /* No select on this site actually sits inside an icon-prefixed .input-wrap
+     (that padding was copied from there for a case that was never used), so
+     the big reserved left gap just made this trigger look off next to a
+     normal sibling input/select — e.g. the wizard's Trip Date + Select Party
+     row, where the party trigger visibly didn't line up with the date input
+     and wrapped its text onto two lines for no reason. */
+  padding: 0.8rem 1rem;
   background: var(--bg-input);
   border: 1.5px solid var(--border-color, var(--border));
   border-radius: var(--radius-sm, var(--r-sm));
