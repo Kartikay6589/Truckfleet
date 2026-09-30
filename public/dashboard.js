@@ -1278,7 +1278,7 @@ let wizard = {
    then filters India's city list as the user types. */
 function populateLocationStateSelects() {
   if (!window.INDIA_STATES) return;
-  const optionsHtml = '<option value="">Select State (optional)</option>' +
+  const optionsHtml = '<option value="">Select State</option>' +
     window.INDIA_STATES.map(s => `<option value="${s}">${s}</option>`).join('');
   ['trip-from-state', 'trip-to-state'].forEach(id => {
     const sel = document.getElementById(id);
@@ -1286,6 +1286,15 @@ function populateLocationStateSelects() {
   });
 }
 populateLocationStateSelects();
+
+function findStateForCity(cityName) {
+  if (!cityName || !window.INDIA_CITIES_BY_STATE) return null;
+  const target = cityName.trim().toLowerCase();
+  for (const state of Object.keys(window.INDIA_CITIES_BY_STATE)) {
+    if (window.INDIA_CITIES_BY_STATE[state].some(c => c.toLowerCase() === target)) return state;
+  }
+  return null;
+}
 
 function getLocationCityPool(which) {
   const stateSel = document.getElementById(`trip-${which}-state`);
@@ -1465,6 +1474,10 @@ function wizardNext(fromStep) {
         noticeEl.style.display = 'block';
         noticeEl.innerHTML = `📍 <b>Ongoing Trip Chain</b><br>Vehicle is currently at <b>${lastTrip.to}</b>. It must eventually return to <b>${cycleOrig}</b> to complete the cycle.`;
         wizard.cycleOrigin = cycleOrig;
+        // The pickup text is locked to wherever the last trip ended — try to
+        // find which state that place belongs to so the now-mandatory state
+        // select doesn't block a chained trip the user has no say over.
+        setSelectValue('trip-from-state', findStateForCity(lastTrip.to) || '');
       } else {
         fromInput.value = '';
         fromInput.readOnly = false;
@@ -1481,12 +1494,20 @@ function wizardNext(fromStep) {
     }
   }
   if (fromStep === 2) {
-    const val = document.getElementById('trip-from').value.trim();
+    const fromInputEl = document.getElementById('trip-from');
+    const state = document.getElementById('trip-from-state').value;
+    // A locked/pre-filled pickup (ongoing trip chain) isn't the user's free
+    // choice — don't block them on a state pick for it if none could be
+    // auto-matched (e.g. the earlier trip's "to" wasn't one of our listed places).
+    if (!state && !fromInputEl.readOnly) { showWpError(2, 'Please select a state.'); return; }
+    const val = fromInputEl.value.trim();
     if (!val) { showWpError(2, 'Please enter the pickup location.'); return; }
     wizard.from = val;
     if (!wizard.cycleOrigin) wizard.cycleOrigin = val; // Set new cycle origin if not inherited
   }
   if (fromStep === 3) {
+    const state = document.getElementById('trip-to-state').value;
+    if (!state) { showWpError(3, 'Please select a state.'); return; }
     const val = document.getElementById('trip-to').value.trim();
     if (!val) { showWpError(3, 'Please enter the delivery location.'); return; }
     wizard.to = val;

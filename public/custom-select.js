@@ -94,6 +94,44 @@ function initCustomSelect(select) {
     wrapper.classList.toggle('open');
   });
 
+  // 8. Keyboard type-ahead — a real <select> lets you jump to an option by
+  // typing its first letter (and cycles through repeats), but that's lost
+  // once the native element is hidden behind this custom trigger. Reimplement
+  // it here: never writes the typed letter into the box itself, only moves
+  // the selection to match it.
+  trigger.tabIndex = 0;
+  trigger.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      trigger.click();
+      return;
+    }
+    if (e.key === 'Escape') {
+      wrapper.classList.remove('open');
+      return;
+    }
+    if (e.key.length !== 1 || !/[a-z0-9]/i.test(e.key)) return;
+
+    const letter = e.key.toLowerCase();
+    const candidates = Array.from(optionsContainer.querySelectorAll('.custom-option'))
+      .filter(o => o.style.pointerEvents !== 'none' && o.textContent.trim().toLowerCase().startsWith(letter));
+    if (candidates.length === 0) return;
+
+    e.preventDefault();
+    const current = optionsContainer.querySelector('.custom-option.selected');
+    const currentIdx = current ? candidates.indexOf(current) : -1;
+    const next = candidates[(currentIdx + 1) % candidates.length];
+
+    // Same as a real click, minus closing the dropdown while it's open —
+    // typing another letter should keep cycling through matches.
+    triggerText.textContent = next.textContent;
+    select.value = next.dataset.value;
+    optionsContainer.querySelectorAll('.custom-option').forEach(o => o.classList.remove('selected'));
+    next.classList.add('selected');
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    next.scrollIntoView({ block: 'nearest' });
+  });
+
   return wrapper;
 }
 

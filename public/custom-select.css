@@ -24,10 +24,12 @@
   transition: all 0.2s ease;
 }
 
-.custom-select-wrapper.open .custom-select-trigger {
+.custom-select-wrapper.open .custom-select-trigger,
+.custom-select-trigger:focus {
   border-color: var(--accent-500, var(--accent));
   box-shadow: 0 0 0 3px var(--accent-glow);
   background: var(--bg-input-focus, var(--bg-input));
+  outline: none;
 }
 
 .custom-select-trigger .arrow {
@@ -60,7 +62,13 @@
   transform: translateY(-10px);
   transition: all 0.3s ease;
   z-index: 1000;
-  overflow: hidden;
+  /* A select with many options (e.g. all Indian states) used to have no
+     height limit here, so opening it grew the dropdown tall enough that
+     the whole page had to scroll to see the rest of it instead of just
+     this box. Cap the height and let this box scroll internally. */
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .custom-select-wrapper.open .custom-options {
