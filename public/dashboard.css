@@ -1197,7 +1197,11 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
 .loc-suggestions{
   display:none; position:absolute; top:calc(100% + 6px); left:0; right:0;
   max-height:240px; overflow-y:auto; text-align:left;
-  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-md);
+  /* var(--bg-card) is a near-transparent rgba (5% white in dark mode) — fine
+     for a card sitting on the page background, but this floats over other
+     opaque UI (the Continue button) and let it bleed through. --bg-modal is
+     the solid color the row-menu/other floating dropdowns already use. */
+  background:var(--bg-modal); border:1px solid var(--border); border-radius:var(--r-md);
   box-shadow:0 10px 30px rgba(0,0,0,0.35); z-index:60;
 }
 .loc-suggestions.open{ display:block; }
