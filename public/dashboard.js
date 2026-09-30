@@ -1375,6 +1375,7 @@ function startTripWizard() {
   document.getElementById('trip-total').value   = '';
   document.getElementById('trip-commission').value = '';
   document.getElementById('trip-advance').value = '';
+  document.getElementById('trip-advance-date').value = todayDateInputValue();
   document.getElementById('trip-date').value = todayDateInputValue();
   gotoWizardStep(1);
 }
@@ -1524,10 +1525,13 @@ function wizardNext(fromStep) {
     wizard.commission = val;
   }
   if (fromStep === 6) {
+    const dateStr = document.getElementById('trip-advance-date').value;
+    if (!dateStr) { showWpError(6, 'Please select the date the advance was given.'); return; }
     const val = parseFloat(document.getElementById('trip-advance').value);
     if (isNaN(val) || val < 0) { showWpError(6, 'Please enter a valid advance amount (0 or more).'); return; }
     if (val > wizard.total) { showWpError(6, `❌ Advance (₹${val.toLocaleString('en-IN')}) cannot exceed total amount (₹${wizard.total.toLocaleString('en-IN')}).`); return; }
     wizard.advance = val;
+    wizard.advanceDate = dateStr;
   }
   if (fromStep === 7) {
     const val = parseInt(document.getElementById('trip-tds-val').value) || 0;
@@ -1693,6 +1697,12 @@ function buildConfirmCard() {
       <span class="cc-label">Advance Paid</span>
       <span class="cc-value">₹${wizard.advance.toLocaleString('en-IN')}</span>
     </div>
+    ${wizard.advance > 0 && wizard.advanceDate ? `
+    <div class="cc-row">
+      <span class="cc-label">Advance Date</span>
+      <span class="cc-value">${new Date(dateInputToISOString(wizard.advanceDate)).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</span>
+    </div>
+    ` : ''}
     <div class="cc-divider"></div>
     <div class="cc-row cc-balance-row">
       <span class="cc-label">💰 Balance Remaining</span>
@@ -1732,6 +1742,7 @@ async function confirmTrip() {
       commissionAmount,
       total: netTotal,
       advance: wizard.advance,
+      advanceDate: dateInputToISOString(wizard.advanceDate),
       balance,
       paid: false,
       paidAt: null,
