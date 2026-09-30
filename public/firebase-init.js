@@ -25,7 +25,7 @@ const fbAuth = firebase.auth();
 const fbDb = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-// The one account that can approve/deny new Fleet Owner & Company signups —
+// The one account that can approve/deny new Fleet Owner signups —
 // see firestore.rules for how this same address gates the "approved" field
 // server-side (a hardcoded check here is only ever a UI convenience, never
 // the actual security boundary).
@@ -49,40 +49,34 @@ window.FS = {
     });
   },
 
-  /* role is only meaningful the first time this account signs in — an
-     existing account keeps whatever role it already has (see
-     ensureUserProfile). */
-  async signInWithGoogle(role) {
+  /* Every account is a Fleet Owner (the only role this app has), except the
+     one designated admin address — see ensureUserProfile/signUpWithEmail. */
+  async signInWithGoogle() {
     await fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     const result = await fbAuth.signInWithPopup(googleProvider);
-    await this.ensureUserProfile(result.user, role);
+    await this.ensureUserProfile(result.user);
     return result.user;
   },
 
   /* Email/password sign-up. Creates the Firebase Auth account and the
      Firestore profile document together — if either step fails, script.js
      shows the error and the user can just try again. */
-  async signUpWithEmail({ firstName, lastName, email, password, role }) {
+  async signUpWithEmail({ firstName, lastName, email, password }) {
     const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
     const user = cred.user;
     try { await user.updateProfile({ displayName: `${firstName} ${lastName}`.trim() }); } catch (e) {}
     const isAdmin = email.trim().toLowerCase() === ADMIN_EMAIL;
-    const finalRole = isAdmin ? 'admin' : this.normalizeRole(role);
+    const finalRole = isAdmin ? 'admin' : 'fleet-owner';
     const profile = {
       firstName, lastName, email, phone: '', photoURL: '',
       role: finalRole, createdAt: new Date().toISOString(),
-      // New Fleet Owner / Company accounts wait for the admin to approve
-      // them before they can use the app — see dashboard.js's boot check.
-      // Admin and driver accounts (drivers are already invite-linked by an
-      // approved owner) never need this gate.
-      approved: (finalRole === 'fleet-owner' || finalRole === 'company') ? false : true
+      // New Fleet Owner accounts wait for the admin to approve them before
+      // they can use the app — see dashboard.js's boot check. The admin
+      // account itself never needs this gate.
+      approved: finalRole === 'fleet-owner' ? false : true
     };
     await this.userDoc(user.uid).set(profile);
     return user;
-  },
-
-  normalizeRole(role) {
-    return ['fleet-owner', 'company', 'driver'].includes(role) ? role : 'fleet-owner';
   },
 
   /* Email/password sign-in. "Remember me" unchecked → session-only
@@ -109,41 +103,16 @@ window.FS = {
     return fbDb.collection('users').doc(uid);
   },
 
-  /* ── Driver <-> Fleet Owner linking ──
-     A Fleet Owner creates one of these (keyed by the driver's email) when
-     adding a driver with an email address. When that person eventually
-     signs up or signs in with role "driver", driver.js looks this up by
-     their own email and claims it — that's the only way a driver account
-     ever gets access to a specific owner's trips (see firestore.rules). */
-  driverInviteDoc(email) {
-    return fbDb.collection('driverInvites').doc(email.trim().toLowerCase());
-  },
-
-  async createDriverInvite(email, ownerUid, driverId) {
-    await this.driverInviteDoc(email).set({
-      ownerUid, driverId, driverUid: null, createdAt: new Date().toISOString()
-    });
-  },
-
-  async getDriverInvite(email) {
-    const snap = await this.driverInviteDoc(email).get();
-    return snap.exists ? snap.data() : null;
-  },
-
-  async claimDriverInvite(email, driverUid) {
-    await this.driverInviteDoc(email).update({ driverUid });
-  },
-
   /* Creates the users/{uid} profile document the first time someone signs
      in; leaves it alone on every later sign-in. */
-  async ensureUserProfile(user, role) {
+  async ensureUserProfile(user) {
     const ref = this.userDoc(user.uid);
     const snap = await ref.get();
     if (snap.exists) return snap.data();
 
     const [firstName, ...rest] = (user.displayName || 'New User').split(' ');
     const isAdmin = (user.email || '').trim().toLowerCase() === ADMIN_EMAIL;
-    const finalRole = isAdmin ? 'admin' : this.normalizeRole(role);
+    const finalRole = isAdmin ? 'admin' : 'fleet-owner';
     const profile = {
       firstName: firstName || 'New',
       lastName: rest.join(' ') || 'User',
@@ -152,7 +121,7 @@ window.FS = {
       photoURL: user.photoURL || '',
       role: finalRole,
       createdAt: new Date().toISOString(),
-      approved: (finalRole === 'fleet-owner' || finalRole === 'company') ? false : true
+      approved: finalRole === 'fleet-owner' ? false : true
     };
     await ref.set(profile);
     return profile;
@@ -163,7 +132,7 @@ window.FS = {
     return snap.exists ? snap.data() : null;
   },
 
-  /* ── Admin: approving new Fleet Owner / Company signups ──
+  /* ── Admin: approving new Fleet Owner signups ──
      Only the ADMIN_EMAIL account can actually read across every user's
      profile or write the "approved"/"denied" fields — enforced by
      firestore.rules, not by this file. See admin.js for the UI. */

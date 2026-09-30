@@ -1,7 +1,7 @@
 /* ════════════════════════════════════════════
    TRUCKFLEET PRO — admin.js
    Everything specific to the "admin" role account: reviewing and
-   approving/denying new Fleet Owner & Company sign-ups. See
+   approving/denying new Fleet Owner sign-ups. See
    firestore.rules for exactly what this account can and can't touch —
    it can only ever flip approved/denied on someone else's profile, never
    read or write any of their actual fleet data.
@@ -19,7 +19,7 @@ async function initAdminDashboard() {
 /* Hides every Fleet Owner/driver nav item and shows only the one this
    role needs. */
 function applyAdminNav() {
-  ['nav-dashboard', 'nav-vehicles', 'nav-drivers', 'nav-salary', 'nav-party', 'nav-bank', 'nav-trips', 'nav-broker', 'nav-driver'].forEach(id => {
+  ['nav-dashboard', 'nav-vehicles', 'nav-drivers', 'nav-salary', 'nav-party', 'nav-bank', 'nav-trips', 'nav-broker'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -104,7 +104,7 @@ async function denyPendingAccount(targetUid, btn) {
    gated (see dashboard.js's boot check), so they always read Active. */
 function fmtAccountStatus(u) {
   if (u.denied) return { label: 'Denied', color: 'var(--red)' };
-  if ((u.role === 'fleet-owner' || u.role === 'company') && u.approved === false) {
+  if (u.role === 'fleet-owner' && u.approved === false) {
     return { label: 'Pending', color: 'var(--accent)' };
   }
   return { label: 'Active', color: 'var(--green)' };

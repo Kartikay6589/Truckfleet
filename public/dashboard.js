@@ -97,11 +97,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // A brand-new Fleet Owner/Company account waits here until the admin
-  // approves it — approved is only ever undefined (accounts created before
-  // this gate existed, which stay unaffected) or a real boolean, so this
-  // only blocks accounts explicitly marked false.
-  if ((currentUser.role === 'fleet-owner' || currentUser.role === 'company') && currentUser.approved === false) {
+  // A brand-new Fleet Owner account waits here until the admin approves it
+  // — approved is only ever undefined (accounts created before this gate
+  // existed, which stay unaffected) or a real boolean, so this only blocks
+  // accounts explicitly marked false.
+  if (currentUser.role === 'fleet-owner' && currentUser.approved === false) {
     document.getElementById('gate-icon').textContent = currentUser.denied ? '🚫' : '⏳';
     document.getElementById('gate-title').textContent = currentUser.denied ? 'Account Denied' : 'Waiting for Approval';
     document.getElementById('gate-message').textContent = currentUser.denied
@@ -113,15 +113,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   renderSidemenuIdentity();
-
-  // A driver account never touches the Fleet Owner's vehicles/trips/etc.
-  // data at all — it only ever sees the one trip an owner has assigned to
-  // it, via driver.js. See firestore.rules for what makes this safe.
-  if (currentUser.role === 'driver') {
-    await initDriverDashboard();
-    document.body.classList.remove('app-loading');
-    return;
-  }
 
   const [vehicles, drivers, parties, banks, trips, brokerTrips, notifications] = await Promise.all([
     FS.getAll(uid, 'vehicles'),
@@ -365,18 +356,15 @@ document.addEventListener('mouseout', () => cc.classList.remove('hover'));
 /* ════════════════════════════════════════════
    DASHBOARD INIT
 ════════════════════════════════════════════ */
-/* Role is chosen once at sign-up (see index.html's "I am a..." picker) and
-   locked from then on — firestore.rules rejects any update that touches the
-   role field, so this modal only ever displays it, never edits it. */
+/* Fleet Owner is the only role every account signs up as (see
+   FS.signUpWithEmail) — this modal just confirms that, it never lets
+   anyone change it. */
 const ROLE_INFO = {
-  'fleet-owner': { icon: '🚛', name: 'Fleet Owner / Truck Owner', desc: 'You own trucks and take delivery contracts' },
-  'company':     { icon: '🏢', name: 'Company', desc: 'You hire trucks to move your goods' },
-  'driver':      { icon: '👨‍✈️', name: 'Truck Driver', desc: 'You drive trucks for fleet owners' }
+  'fleet-owner': { icon: '🚛', name: 'Fleet Owner / Truck Owner', desc: 'You own trucks and take delivery contracts' }
 };
 
 function renderRoleView() {
-  const role = ROLE_INFO[currentUser.role] ? currentUser.role : 'fleet-owner';
-  const info = ROLE_INFO[role];
+  const info = ROLE_INFO['fleet-owner'];
   document.getElementById('role-option-list').innerHTML = `
     <div class="role-option-btn selected" style="cursor:default;">
       <span class="role-opt-icon">${info.icon}</span>
@@ -437,7 +425,7 @@ function refreshStats() {
 }
 
 function fmtRole(r) {
-  return { 'fleet-owner':'Fleet Owner', 'company':'Company', 'driver':'Truck Driver' }[r] || r || 'Fleet Owner';
+  return r === 'admin' ? 'Admin' : 'Fleet Owner';
 }
 
 /* ════════════════════════════════════════════
@@ -877,7 +865,6 @@ function editDriver(id) {
   document.getElementById('drv-submit-btn').textContent = '💾 Save Changes';
   document.getElementById('drv-name').value = d.name;
   document.getElementById('drv-license').value = d.license;
-  document.getElementById('drv-email').value = d.email || '';
 
   document.getElementById('add-driver-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -902,7 +889,6 @@ async function handleAddDriver(e) {
   e.preventDefault();
   const name = document.getElementById('drv-name').value.trim();
   const license = document.getElementById('drv-license').value.trim().toUpperCase();
-  const email = document.getElementById('drv-email').value.trim().toLowerCase();
 
   if (!/^[A-Z0-9]+$/.test(license)) {
     showFormError('drv-error', '⚠️ Driving License can only contain uppercase alphabets and numbers.');
@@ -916,19 +902,12 @@ async function handleAddDriver(e) {
 
   if (editingDriverId) {
     const existing = currentDrivers.find(d => d.id === editingDriverId);
-    const data = { name, license, email: email || '' };
+    const data = { name, license };
     try {
       await FS.update(uid, 'drivers', editingDriverId, data);
     } catch (err) {
       showFormError('drv-error', `⚠️ ${err.message || 'Could not save these changes.'}`);
       return;
-    }
-    // A newly-added or changed email gets its own invite so the driver can
-    // still claim access — see FS.createDriverInvite.
-    if (email && email !== existing.email) {
-      try { await FS.createDriverInvite(email, uid, editingDriverId); } catch (err) {
-        showToast(`Driver saved, but couldn't set up app access yet: ${err.message || 'unknown error'}`, 'error');
-      }
     }
     Object.assign(existing, data);
     await FS.addNotification(uid, `Driver updated: ${name}`);
@@ -941,27 +920,13 @@ async function handleAddDriver(e) {
 
   let driver;
   try {
-    driver = await FS.add(uid, 'drivers', { name, license, email: email || '', addedAt: new Date().toISOString() });
+    driver = await FS.add(uid, 'drivers', { name, license, addedAt: new Date().toISOString() });
   } catch (err) {
     showFormError('drv-error', `⚠️ ${err.message || 'Could not add this driver.'}`);
     return;
   }
 
   currentDrivers.push(driver);
-
-  // The driver record itself is saved either way — the invite is a
-  // separate, best-effort step so its failure (e.g. rules not deployed
-  // yet, a flaky connection) never leaves a "phantom" driver the UI thinks
-  // failed to save. Re-adding the email later (or re-saving this driver)
-  // can always retry the invite.
-  if (email) {
-    try {
-      await FS.createDriverInvite(email, uid, driver.id);
-    } catch (err) {
-      showToast(`Driver saved, but couldn't set up app access yet: ${err.message || 'unknown error'}`, 'error');
-    }
-  }
-
   await FS.addNotification(uid, `New driver added: ${name}`);
   refreshNotifications();
   document.getElementById('form-add-driver').reset();
@@ -977,7 +942,7 @@ function renderDriversTable() {
   count.textContent = `${drivers.length} driver${drivers.length !== 1 ? 's' : ''} registered`;
 
   if (drivers.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No drivers registered yet. Click "Add Driver" to get started.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No drivers registered yet. Click "Add Driver" to get started.</td></tr>`;
     return;
   }
   tbody.innerHTML = drivers.map((d, i) => `
@@ -985,7 +950,6 @@ function renderDriversTable() {
       <td>${i + 1}</td>
       <td><strong>${d.name}</strong></td>
       <td>${d.license}</td>
-      <td>${d.email ? '<span class="type-badge">✉️ Invited</span>' : '<span class="type-badge" style="opacity:.6">No email</span>'}</td>
       <td>${new Date(d.addedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
       <td class="td-row-actions">
         <div class="row-menu">
@@ -2247,7 +2211,7 @@ function renderTripsList() {
         <div class="tc-num">${cycleNum}</div>
         <div class="tc-main">
           <div class="tc-route">📍 ${t.from} → ${t.to}</div>
-          <div class="tc-vehicle">🚛 ${t.vehicleNumber} · ${t.vehicleType}${t.assignedDriverUid ? ` · 🧑‍✈️ ${t.assignedDriverName} (${t.driverStatus || 'Assigned'})` : ''}</div>
+          <div class="tc-vehicle">🚛 ${t.vehicleNumber} · ${t.vehicleType}</div>
         </div>
         <div class="tc-right">
           <div class="tc-amount">₹${t.total.toLocaleString('en-IN')}</div>
