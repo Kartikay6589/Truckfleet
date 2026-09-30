@@ -467,7 +467,7 @@ async function handleSendOtp(e) {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   try {
-    await emailjs.send('service_5kdt125', 'template_i0pqb13', {
+    await emailjs.send(TFP_CONFIG.emailOtp.serviceId, TFP_CONFIG.emailOtp.templateId, {
       to_email: fields.email,
       to_name: fields.firstName,
       otp_code: otp
