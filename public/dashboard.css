@@ -1093,6 +1093,22 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
 .cst-arrow { margin-left: 1rem; color: var(--text3); font-size: 1.2rem; transition: transform 0.2s; }
 .cycle-sub-trip-card:hover .cst-arrow { transform: translateX(3px); color: var(--accent); }
 
+/* Narrow phones: cycle-header is num + summary + the amount/due block + expand
+   arrow all on one row by default, and the amount block was wide enough to run
+   past the viewport edge instead of shrinking. Wrap it onto its own full-width
+   row (after the arrow) and shrink its type, same treatment .trip-card already
+   gets at this width. */
+@media (max-width: 480px) {
+  .cycle-header{ flex-wrap: wrap; row-gap: .5rem; padding: 1rem; }
+  .cycle-header .cycle-expand-icon{ order: 2; }
+  .cycle-header .tc-right{ order: 3; flex: 1 1 100%; text-align: right; margin-right: 0 !important; }
+  .cycle-header .tc-amount{ font-size: .85rem; }
+  .cycle-header .tc-balance{ font-size: .68rem; }
+  .cycle-sub-trips{ padding: 0 1rem 1.25rem 2.25rem; }
+  .cst-route{ font-size: .85rem; }
+  .cst-amount{ font-size: .85rem; }
+}
+
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }

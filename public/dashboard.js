@@ -1866,7 +1866,14 @@ function renderTripsList() {
       const lastTrip = cycleTrips[cycleTrips.length - 1];
       const isClosed = lastTrip.to.trim().toLowerCase() === (firstTrip.cycleOrigin || firstTrip.from).trim().toLowerCase();
       const cycleOrig = firstTrip.cycleOrigin || firstTrip.from;
-      
+
+      // Aggregate the whole chain so the collapsed header can show one number
+      // without needing to expand: total ₹ across every trip, and either
+      // "Paid" (every trip settled) or the combined amount still due.
+      const cycleTotal = cycleTrips.reduce((sum, t) => sum + t.total, 0);
+      const cycleDue = cycleTrips.reduce((sum, t) => sum + Math.max(0, t.balance), 0);
+      const isCyclePaid = cycleDue <= 0;
+
       const groupEl = document.createElement('div');
       groupEl.className = 'cycle-group-card';
       groupEl.innerHTML = `
@@ -1880,13 +1887,19 @@ function renderTripsList() {
               <span class="cycle-badge ${isClosed ? 'completed' : 'ongoing'}">${isClosed ? 'Completed' : 'Ongoing'}</span>
             </div>
           </div>
+          <div class="tc-right" style="margin-right:.5rem;">
+            <div class="tc-amount">₹${cycleTotal.toLocaleString('en-IN')}</div>
+            <div class="tc-balance ${isCyclePaid ? 'settled' : 'pending'}">
+              ${isCyclePaid ? '✅ Paid' : `⏳ ₹${cycleDue.toLocaleString('en-IN')} due`}
+            </div>
+          </div>
           <span class="cycle-expand-icon">▼</span>
         </div>
         <div class="cycle-sub-trips">
           ${cycleTrips.map((t, i) => {
             const isPaid = t.paid || t.balance <= 0;
             return `
-              <a href="trip-detail.html?id=${t.id}" class="cycle-sub-trip-card">
+              <div class="cycle-sub-trip-card" onclick="location.href='trip-detail.html?id=${t.id}'" style="cursor:pointer;">
                 <div class="cst-num">${i + 1}</div>
                 <div class="cst-main">
                   <div class="cst-route">${t.from} → ${t.to}</div>
@@ -1898,8 +1911,15 @@ function renderTripsList() {
                     ${isPaid ? '✅ Paid' : `⏳ ₹${t.balance.toLocaleString('en-IN')} due`}
                   </div>
                 </div>
+                <div class="row-menu" onclick="event.stopPropagation()">
+                  <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Actions">⋮</button>
+                  <div class="row-menu-dropdown">
+                    <button class="row-menu-item" onclick="location.href='trip-detail.html?id=${t.id}'">✏️ Edit</button>
+                    <button class="row-menu-item row-menu-danger" onclick="deleteTrip('${t.id}')">🗑️ Delete</button>
+                  </div>
+                </div>
                 <span class="cst-arrow">→</span>
-              </a>
+              </div>
             `;
           }).join('')}
         </div>
