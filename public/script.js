@@ -187,7 +187,6 @@ document.querySelectorAll('.truck-card').forEach(card => {
 function openModal(type) {
   const m = document.getElementById(`modal-${type}`);
   if (!m) return;
-  if (type === 'signup') resetSignupOtpState();
   m.classList.add('active');
   document.body.style.overflow = 'hidden';
 }
@@ -196,7 +195,6 @@ function closeModal(type) {
   if (!m) return;
   m.classList.remove('active');
   document.body.style.overflow = '';
-  if (type === 'signup') resetSignupOtpState();
 }
 function closeModalOnOverlay(e, type) { if (e.target === e.currentTarget) closeModal(type); }
 function switchModal(toType) {
@@ -258,41 +256,6 @@ window.closeCustomError = function() {
   const overlay = document.getElementById('custom-error-overlay');
   if (overlay) overlay.classList.remove('show');
 };
-
-/* ---- "Check your spam folder" notice — shown right after an OTP email
-   is sent, since a first-time automated email very often lands in Spam
-   and a silent toast is too easy to miss. ---- */
-window.showSpamNotice = function(email) {
-  let overlay = document.getElementById('otp-spam-overlay');
-
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.className = 'confirm-overlay';
-    overlay.id = 'otp-spam-overlay';
-    overlay.innerHTML = `
-      <div class="confirm-box">
-        <div class="cb-icon" style="font-size: 3.5rem;">📬</div>
-        <h3 class="cb-title">Check Your Inbox</h3>
-        <p class="cb-message" id="otp-spam-message"></p>
-        <div class="cb-actions">
-          <button class="cb-btn cb-btn-cancel" onclick="closeSpamNotice()">Got it</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-  }
-
-  document.getElementById('otp-spam-message').textContent =
-    `We've sent a 6-digit code to ${email}. If it doesn't show up in your Inbox within a minute, please check your Spam/Junk folder too.`;
-
-  setTimeout(() => overlay.classList.add('show'), 10);
-};
-
-window.closeSpamNotice = function() {
-  const overlay = document.getElementById('otp-spam-overlay');
-  if (overlay) overlay.classList.remove('show');
-};
-
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   ['signin', 'signup'].forEach(t => {
@@ -300,7 +263,6 @@ document.addEventListener('keydown', (e) => {
     if (m && m.classList.contains('active')) closeModal(t);
   });
   closeCustomError();
-  closeSpamNotice();
 });
 
 /* ---- Toast ---- */
@@ -405,24 +367,9 @@ async function continueWithGoogle() {
   }
 }
 
-/* ---- Sign Up (email/password) — gated behind email OTP verification ----
-   Flow: fill the form → "Send OTP" (validates just name+email, emails a
-   6-digit code via EmailJS) → enter the code → "Verify OTP & Sign Up"
-   (validates the rest of the form, checks the code, then actually creates
-   the account). The account is never created unless the code matches. */
-let signupOtp = null;
-let signupOtpEmail = null;
-let signupOtpResendInterval = null;
-
-function validateOtpPrereqs() {
-  const firstName = document.getElementById('signup-firstname').value.trim();
-  const email = document.getElementById('signup-email').value.trim().toLowerCase();
-  if (!firstName) { showAnimatedError('Please enter your first name first.'); return null; }
-  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) { showAnimatedError('Please enter a valid email address.'); return null; }
-  return { firstName, email };
-}
-
-function validateFullSignupForm() {
+/* ---- Sign Up (email/password) ---- */
+async function handleSignUp(e) {
+  e.preventDefault();
   const firstName = document.getElementById('signup-firstname').value.trim();
   const lastName = document.getElementById('signup-lastname').value.trim();
   const email = document.getElementById('signup-email').value.trim().toLowerCase();
@@ -430,140 +377,27 @@ function validateFullSignupForm() {
   const role = document.getElementById('signup-role').value;
   const terms = document.getElementById('signup-terms').checked;
 
-  if (!firstName) { showAnimatedError('First name is mandatory. Please enter your first name.'); return null; }
-  if (!lastName) { showAnimatedError('Last name is mandatory. Please enter your last name.'); return null; }
-  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) { showAnimatedError('Please enter a valid email address.'); return null; }
-  if (password.length < 8) { showAnimatedError('Password must be at least 8 characters long.'); return null; }
-  if (!terms) { showAnimatedError('You must agree to the Terms & Conditions.'); return null; }
+  if (!firstName) { showAnimatedError('First name is mandatory. Please enter your first name.'); return; }
+  if (!lastName) { showAnimatedError('Last name is mandatory. Please enter your last name.'); return; }
+  if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) { showAnimatedError('Please enter a valid email address.'); return; }
+  if (password.length < 8) { showAnimatedError('Password must be at least 8 characters long.'); return; }
+  if (!terms) { showAnimatedError('You must agree to the Terms & Conditions.'); return; }
 
-  return { firstName, lastName, email, password, role };
-}
-
-/* Enter key inside the form routes to whichever step is currently active —
-   both buttons are type="button" (clicking them never double-fires via a
-   submit event), so this is the only path a keyboard Enter takes. */
-function handleSignupFormSubmit(e) {
-  e.preventDefault();
-  const otpSection = document.getElementById('otp-section');
-  if (otpSection.style.display === 'block') {
-    handleVerifyOtpAndSignUp(e);
-  } else {
-    handleSendOtp(e);
-  }
-}
-
-async function handleSendOtp(e) {
-  if (e) e.preventDefault();
-  const fields = validateOtpPrereqs();
-  if (!fields) return;
-
-  const sendBtn = document.getElementById('btn-send-otp');
-  const resendBtn = document.getElementById('otp-resend-btn');
-  const isResend = e && e.currentTarget && e.currentTarget.id === 'otp-resend-btn';
-
-  if (sendBtn) { sendBtn.disabled = true; if (!isResend) sendBtn.textContent = 'Sending...'; }
-  if (resendBtn) resendBtn.disabled = true;
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const submitBtn = document.getElementById('btn-submit-signup');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Creating account...';
 
   try {
-    await emailjs.send(TFP_CONFIG.emailOtp.serviceId, TFP_CONFIG.emailOtp.templateId, {
-      to_email: fields.email,
-      to_name: fields.firstName,
-      otp_code: otp
-    });
-  } catch (err) {
-    showAnimatedError('Could not send the OTP email. Please check your connection and try again.');
-    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send OTP'; }
-    if (!isResend) return;
-    // A failed resend still leaves the OTP section open with the previous
-    // code intact — just let them try the resend button again immediately.
-    startOtpResendCooldown(0);
-    return;
-  }
-
-  signupOtp = otp;
-  signupOtpEmail = fields.email;
-
-  if (sendBtn) { sendBtn.style.display = 'none'; }
-  document.getElementById('otp-section').style.display = 'block';
-  const otpInput = document.getElementById('otp-input');
-  otpInput.value = '';
-  otpInput.focus();
-  showToast(`OTP sent to ${fields.email}`, 'success');
-  showSpamNotice(fields.email);
-  startOtpResendCooldown(60);
-}
-
-function startOtpResendCooldown(seconds) {
-  const resendBtn = document.getElementById('otp-resend-btn');
-  const label = document.getElementById('otp-resend-label');
-  if (signupOtpResendInterval) { clearInterval(signupOtpResendInterval); signupOtpResendInterval = null; }
-
-  let remaining = seconds;
-  resendBtn.disabled = remaining > 0;
-  label.textContent = remaining > 0 ? `Resend OTP in ${remaining}s` : 'Resend OTP';
-  if (remaining <= 0) return;
-
-  signupOtpResendInterval = setInterval(() => {
-    remaining--;
-    if (remaining <= 0) {
-      clearInterval(signupOtpResendInterval);
-      signupOtpResendInterval = null;
-      resendBtn.disabled = false;
-      label.textContent = 'Resend OTP';
-    } else {
-      label.textContent = `Resend OTP in ${remaining}s`;
-    }
-  }, 1000);
-}
-
-async function handleVerifyOtpAndSignUp(e) {
-  if (e) e.preventDefault();
-  const fields = validateFullSignupForm();
-  if (!fields) return;
-
-  if (!signupOtp || fields.email !== signupOtpEmail) {
-    showAnimatedError('Your email changed since the OTP was sent — click "Resend OTP" to get a new code for this address.');
-    return;
-  }
-
-  const entered = document.getElementById('otp-input').value.trim();
-  if (!/^\d{6}$/.test(entered)) { showAnimatedError('Please enter the 6-digit OTP sent to your email.'); return; }
-  if (entered !== signupOtp) { showAnimatedError('Incorrect OTP. Please check your email and try again.'); return; }
-
-  const verifyBtn = document.getElementById('btn-verify-otp');
-  verifyBtn.disabled = true;
-  verifyBtn.textContent = 'Creating account...';
-
-  try {
-    await FS.signUpWithEmail(fields);
-    resetSignupOtpState();
+    const user = await FS.signUpWithEmail({ firstName, lastName, email, password, role });
     closeModal('signup');
-    showWelcomeOverlay(fields.firstName);
+    showWelcomeOverlay(firstName);
   } catch (err) {
     const msg = friendlyAuthError(err);
     if (msg) showAnimatedError(msg);
   } finally {
-    verifyBtn.disabled = false;
-    verifyBtn.textContent = 'Verify OTP & Sign Up';
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Create Account <span class="btn-arrow">→</span>';
   }
-}
-
-/* Wipes all in-progress OTP state — called whenever the Sign Up modal opens
-   or closes so a half-finished attempt never leaks into the next one. */
-function resetSignupOtpState() {
-  signupOtp = null;
-  signupOtpEmail = null;
-  if (signupOtpResendInterval) { clearInterval(signupOtpResendInterval); signupOtpResendInterval = null; }
-
-  const sendBtn = document.getElementById('btn-send-otp');
-  const otpSection = document.getElementById('otp-section');
-  const otpInput = document.getElementById('otp-input');
-  if (sendBtn) { sendBtn.style.display = ''; sendBtn.disabled = false; sendBtn.textContent = 'Send OTP'; }
-  if (otpSection) otpSection.style.display = 'none';
-  if (otpInput) otpInput.value = '';
-  closeSpamNotice();
 }
 
 /* ---- Sign In (email/password) ---- */

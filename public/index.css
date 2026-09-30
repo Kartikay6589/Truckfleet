@@ -1024,14 +1024,6 @@ button:hover ~ .cursor-circle,
   .hero-title { font-size:2rem; }
   .modal-overlay { padding:.75rem; }
   .modal { padding:1.75rem 1.25rem; margin:0; }
-
-  /* .btn-verify / .btn-otp-confirm sat beside their input on a flex row
-     that never wrapped, so on a narrow phone both got squeezed down to a
-     sliver — "Verify OTP & Sign Up" ended up wrapped across four lines
-     and clipped past the viewport edge. Stack input above button instead. */
-  .input-with-verify { flex-direction:column; align-items:stretch; }
-  .otp-input-group { flex-direction:column; }
-  .btn-verify, .btn-otp-confirm { width:100%; height:44px; }
 }
 
 /* ============================================
@@ -1125,7 +1117,7 @@ button:hover ~ .cursor-circle,
 .confirm-overlay.show .cb-icon { opacity: 1; }
 
 .cb-title { font-size: 1.6rem; font-weight: 800; color: #fff; margin-bottom: 0.75rem; letter-spacing: -0.5px; }
-.cb-message { font-size: 1.05rem; color: #94a3b8; margin-bottom: 2.5rem; line-height: 1.6; padding: 0 1rem; overflow-wrap: break-word; word-break: break-word; }
+.cb-message { font-size: 1.05rem; color: #94a3b8; margin-bottom: 2.5rem; line-height: 1.6; padding: 0 1rem; }
 
 .cb-actions { display: flex; gap: 1rem; justify-content: center; }
 .cb-btn { 

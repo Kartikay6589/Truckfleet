@@ -10,17 +10,6 @@ window.TFP_CONFIG = {
   supportEmail: 'crazytyagi01@gmail.com',
   supportPhone: '+91 9971690250',
 
-  // Signup OTP email (sent via EmailJS — see script.js's handleSendOtp).
-  // Once the truckfleetpro.in domain is verified with a proper email
-  // provider (Brevo etc.) and connected to EmailJS as a Custom SMTP
-  // service, just swap serviceId below to the new service — no other
-  // code needs to change.
-  emailOtp: {
-    publicKey: '3uZvA03ZQYnvbPezG',
-    serviceId: 'service_5kdt125',
-    templateId: 'template_i0pqb13'
-  },
-
   // Defaults for first-time visitors (each user can change them in Appearance settings)
   defaults: {
     theme: 'dark',               // 'dark' | 'light'

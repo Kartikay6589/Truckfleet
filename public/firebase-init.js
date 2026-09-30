@@ -55,17 +55,14 @@ window.FS = {
 
   /* Email/password sign-up. Creates the Firebase Auth account and the
      Firestore profile document together — if either step fails, script.js
-     shows the error and the user can just try again.
-     script.js only ever calls this after its own email-OTP check has
-     already passed, so emailVerified is set true unconditionally here. */
+     shows the error and the user can just try again. */
   async signUpWithEmail({ firstName, lastName, email, password, role }) {
     const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
     const user = cred.user;
     try { await user.updateProfile({ displayName: `${firstName} ${lastName}`.trim() }); } catch (e) {}
     const profile = {
       firstName, lastName, email, phone: '', photoURL: '',
-      role: this.normalizeRole(role), createdAt: new Date().toISOString(),
-      emailVerified: true
+      role: this.normalizeRole(role), createdAt: new Date().toISOString()
     };
     await this.userDoc(user.uid).set(profile);
     return user;
