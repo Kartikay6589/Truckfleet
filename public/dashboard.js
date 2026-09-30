@@ -1940,6 +1940,176 @@ function createEmptyState() {
   return el;
 }
 
+/* ── Export every registered trip (one row each) to a real .xlsx file via
+   SheetJS. Vehicle Number is forced to a text cell for the same reason as
+   the Vehicles export (so a plate like "0587KL12" doesn't get read back as
+   a number with its leading zero stripped). ── */
+function exportTripsToExcel() {
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel export library failed to load. Check your connection and try again.', 'error');
+    return;
+  }
+  const trips = getTrips();
+  if (trips.length === 0) {
+    showToast('No trips to export.', 'error');
+    return;
+  }
+
+  const sorted = [...trips].sort((a, b) => new Date(a.registeredAt) - new Date(b.registeredAt));
+  const rows = sorted.map((t, i) => ({
+    'S.No': i + 1,
+    'Vehicle Number': t.vehicleNumber,
+    'From': t.from,
+    'To': t.to,
+    'Party Name': t.partyName || '',
+    'Party Phone': t.partyPhone || '',
+    'Trip Date': new Date(t.registeredAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+    'Gross Amount': t.originalTotal != null ? t.originalTotal : t.total,
+    'TDS %': t.tdsPercent || 0,
+    'GST %': t.gstPercent || 0,
+    'Commission': t.commissionAmount || 0,
+    'Net Amount': t.total,
+    'Advance': t.advance || 0,
+    'Advance Date': t.advanceDate ? new Date(t.advanceDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+    'Balance Due': t.balance,
+    'Status': (t.paid || t.balance <= 0) ? 'Paid' : 'Due'
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const vehicleNumberCol = 1; // 0-based: "Vehicle Number" is the 2nd column
+  for (let r = range.s.r + 1; r <= range.e.r; r++) {
+    const ref = XLSX.utils.encode_cell({ r, c: vehicleNumberCol });
+    if (ws[ref]) { ws[ref].t = 's'; ws[ref].z = '@'; }
+  }
+  ws['!cols'] = [
+    { wch: 6 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 14 },
+    { wch: 12 }, { wch: 13 }, { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 13 },
+    { wch: 12 }, { wch: 13 }, { wch: 13 }, { wch: 8 }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Trips');
+
+  XLSX.writeFile(wb, `TruckFleet-Trips-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  showToast(`Exported ${trips.length} trip${trips.length !== 1 ? 's' : ''} to Excel.`, 'success');
+}
+
+async function handleTripImportFile(event) {
+  const file = event.target.files[0];
+  event.target.value = ''; // lets the user re-pick the same file later
+  if (!file) return;
+  await importTripsFromExcel(file);
+}
+
+/* ── Import trips from an .xlsx file. Accepts the same headers this app
+   exports (Vehicle Number, From, To, Gross Amount, Trip Date required;
+   Party Name/Phone, TDS %, GST %, Commission, Advance, Advance Date
+   optional). Vehicle Number must match an already-registered vehicle —
+   trips can't be attached to a vehicle that doesn't exist yet. Party is
+   matched by name or phone against registered parties when given, but
+   unlike the trip wizard it's not required here since bulk-imported rows
+   are often historical records where the party may not be on file. ── */
+async function importTripsFromExcel(file) {
+  let rows;
+  try {
+    rows = await readExcelFile(file);
+  } catch (err) {
+    showToast(err.message, 'error');
+    return;
+  }
+  if (rows.length === 0) {
+    showToast('That file has no rows to import.', 'error');
+    return;
+  }
+
+  const vehiclesByNumber = new Map(currentVehicles.map(v => [v.vehicleNumber.toUpperCase(), v]));
+  const parties = currentParties;
+
+  let added = 0, invalid = 0, noVehicle = 0;
+
+  for (const row of rows) {
+    const vehicleNumber = String(findColumn(row, ['vehicle number', 'vehicle no', 'number']) || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const from = String(findColumn(row, ['from', 'pickup', 'pickup location']) || '').trim();
+    const to = String(findColumn(row, ['to', 'delivery', 'delivery location']) || '').trim();
+    const grossAmount = parseFloat(findColumn(row, ['gross amount', 'total amount', 'amount', 'total']));
+    const tripDateRaw = findColumn(row, ['trip date', 'date', 'registered on']);
+
+    if (!vehicleNumber || !from || !to || !grossAmount || isNaN(grossAmount) || !tripDateRaw) { invalid++; continue; }
+
+    const vehicle = vehiclesByNumber.get(vehicleNumber);
+    if (!vehicle) { noVehicle++; continue; }
+
+    const tripDate = new Date(tripDateRaw);
+    if (isNaN(tripDate.getTime())) { invalid++; continue; }
+
+    const partyNameCol = String(findColumn(row, ['party name', 'party']) || '').trim();
+    const partyPhoneCol = String(findColumn(row, ['party phone', 'phone']) || '').trim();
+    const matchedParty = parties.find(p =>
+      (partyNameCol && p.name.toLowerCase() === partyNameCol.toLowerCase()) ||
+      (partyPhoneCol && p.contact === partyPhoneCol)
+    );
+
+    const tdsPercent = parseFloat(findColumn(row, ['tds %', 'tds'])) || 0;
+    const gstPercent = parseFloat(findColumn(row, ['gst %', 'gst'])) || 0;
+    const commissionAmount = parseFloat(findColumn(row, ['commission'])) || 0;
+    const advance = parseFloat(findColumn(row, ['advance'])) || 0;
+    const advanceDateRaw = findColumn(row, ['advance date']);
+    const advanceDate = advanceDateRaw && !isNaN(new Date(advanceDateRaw).getTime()) ? new Date(advanceDateRaw).toISOString() : null;
+
+    const tdsAmount = Math.round((grossAmount * tdsPercent) / 100);
+    const gstAmount = Math.round((grossAmount * gstPercent) / 100);
+    const netTotal = grossAmount - tdsAmount + gstAmount - commissionAmount;
+    const balance = netTotal - advance;
+
+    try {
+      const trip = await FS.add(uid, 'trips', {
+        vehicleId: vehicle.id,
+        vehicleNumber: vehicle.vehicleNumber,
+        vehicleType: vehicle.vehicleType,
+        from, to,
+        cycleOrigin: from,
+        originalTotal: grossAmount,
+        tdsPercent, tdsAmount,
+        gstType: gstPercent > 0 ? 'IGST' : 'NILL',
+        gstPercent, gstAmount,
+        commissionAmount,
+        total: netTotal,
+        advance,
+        advanceDate,
+        balance,
+        paid: balance <= 0,
+        paidAt: null,
+        fuelExpense: 0,
+        tollExpense: 0,
+        driverExpense: 0,
+        partyId: matchedParty ? matchedParty.id : null,
+        partyName: matchedParty ? matchedParty.name : (partyNameCol || ''),
+        partyPhone: matchedParty ? matchedParty.contact : (partyPhoneCol || ''),
+        registeredAt: tripDate.toISOString()
+      });
+      currentTrips.push(trip);
+      added++;
+    } catch (err) {
+      invalid++;
+    }
+  }
+
+  renderTripsList();
+  refreshStats();
+  if (added > 0) {
+    await FS.addNotification(uid, `Imported ${added} trip${added !== 1 ? 's' : ''} from Excel`);
+    refreshNotifications();
+  }
+
+  const parts = [];
+  if (added) parts.push(`${added} added`);
+  if (noVehicle) parts.push(`${noVehicle} row${noVehicle !== 1 ? 's' : ''} skipped (vehicle not found)`);
+  if (invalid) parts.push(`${invalid} row${invalid !== 1 ? 's' : ''} had missing/invalid data`);
+  showToast(summarizeImport(parts, 'imported'), added > 0 ? 'success' : 'error');
+}
+
 /* ════════════════════════════════════════════
    BROKERED TRIPS
 ════════════════════════════════════════════ */

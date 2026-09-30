@@ -496,6 +496,15 @@
           <div class="trips-list-section">
             <div class="tls-toolbar">
               <span class="tls-count" id="tls-count">0 trips registered</span>
+              <div class="vtw-excel-actions">
+                <input type="file" id="trip-import-input" accept=".xlsx,.xls" style="display:none" onchange="handleTripImportFile(event)" />
+                <button type="button" class="btn-import-excel" id="btn-import-trips" onclick="document.getElementById('trip-import-input').click()">
+                  📥 Import from Excel
+                </button>
+                <button type="button" class="btn-export-excel" id="btn-export-trips" onclick="exportTripsToExcel()">
+                  📊 Export to Excel
+                </button>
+              </div>
             </div>
             <div id="trips-list-container">
               <div class="empty-state" id="trips-empty-state">
