@@ -184,6 +184,41 @@ window.FS = {
     await this.userDoc(targetUid).update({ approved: false, denied: true });
   },
 
+  /* Every account except the admin's own — the "All Users" list in
+     admin.js. Sorted newest-first so freshly created accounts surface
+     at the top, same as every other list in this app. */
+  async getAllAccounts() {
+    const snap = await fbDb.collection('users').get();
+    return snap.docs.map(this.docToObj)
+      .filter(u => u.role !== 'admin')
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  },
+
+  // Every subcollection an account's data can live in — kept in one place
+  // so deleteAccount (below) and anything else that needs to wipe an
+  // account clean stays in sync with what the rest of the app actually
+  // writes to.
+  ACCOUNT_SUBCOLLECTIONS: ['vehicles', 'drivers', 'parties', 'banks', 'trips', 'brokerTrips', 'notifications'],
+
+  /* Admin-only: permanently removes an account's Firestore data (profile +
+     every subcollection above). This does NOT delete their Firebase Auth
+     login — that requires the Admin SDK, which this client-only app
+     doesn't have — so if they sign in again afterwards they'll land back
+     on a fresh, unapproved account rather than being locked out entirely.
+     Trip-level sub-subcollections (expenses/issues/podSubmissions) are
+     left behind as orphaned data; not worth a second round of queries for
+     records nobody can reach once the parent trip is gone. */
+  async deleteAccount(targetUid) {
+    for (const name of this.ACCOUNT_SUBCOLLECTIONS) {
+      const snap = await fbDb.collection('users').doc(targetUid).collection(name).get();
+      if (snap.empty) continue;
+      const batch = fbDb.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+    await this.userDoc(targetUid).delete();
+  },
+
   /* A user's own subcollection, e.g. FS.col(uid, 'vehicles') */
   col(uid, name) {
     return this.userDoc(uid).collection(name);

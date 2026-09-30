@@ -46,6 +46,11 @@ service cloud.firestore {
       allow update: if isAdmin()
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approved', 'denied']);
 
+      // Admin account management: see every account (already granted above)
+      // and remove one entirely, including its data (see the subcollection
+      // rule below) — never create or edit anyone's actual fleet data.
+      allow delete: if isAdmin();
+
       // Recursive wildcard so the owner keeps full access to every nested
       // subcollection at any depth (vehicles, drivers, trips,
       // trips/{id}/expenses, trips/{id}/issues, trips/{id}/podSubmissions,
@@ -60,6 +65,11 @@ service cloud.firestore {
       // their own profile and skip admin approval entirely).
       match /{subcollection}/{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
+
+        // Deleting an account (see the users/{userId} delete rule above)
+        // also needs to clear out its vehicles/trips/etc., so the admin
+        // can delete here too — but never create or edit any of it.
+        allow read, delete: if isAdmin();
       }
 
       match /trips/{tripId} {

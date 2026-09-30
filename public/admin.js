@@ -13,6 +13,7 @@ async function initAdminDashboard() {
   applyAdminNav();
   switchToAdminView();
   await renderPendingAccounts();
+  await renderAllUsers();
 }
 
 /* Hides every Fleet Owner/driver nav item and shows only the one this
@@ -80,6 +81,7 @@ async function approvePendingAccount(targetUid, btn) {
   }
   showToast('Account approved.', 'success');
   await renderPendingAccounts();
+  await renderAllUsers();
 }
 
 async function denyPendingAccount(targetUid, btn) {
@@ -95,4 +97,72 @@ async function denyPendingAccount(targetUid, btn) {
   }
   showToast('Account denied.', 'info');
   await renderPendingAccounts();
+  await renderAllUsers();
+}
+
+/* Active/Pending/Denied — a driver or the admin account itself is never
+   gated (see dashboard.js's boot check), so they always read Active. */
+function fmtAccountStatus(u) {
+  if (u.denied) return { label: 'Denied', color: 'var(--red)' };
+  if ((u.role === 'fleet-owner' || u.role === 'company') && u.approved === false) {
+    return { label: 'Pending', color: 'var(--accent)' };
+  }
+  return { label: 'Active', color: 'var(--green)' };
+}
+
+async function renderAllUsers() {
+  const tbody = document.getElementById('admin-users-tbody');
+  const count = document.getElementById('autw-count');
+
+  let users;
+  try {
+    users = await FS.getAllAccounts();
+  } catch (err) {
+    showToast(err.message || 'Could not load the user list.', 'error');
+    return;
+  }
+
+  count.textContent = `${users.length} user${users.length !== 1 ? 's' : ''} total`;
+
+  if (users.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">No users registered yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = users.map((u, i) => {
+    const status = fmtAccountStatus(u);
+    return `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${TFP.esc(u.firstName || '')} ${TFP.esc(u.lastName || '')}</strong></td>
+      <td>${TFP.esc(u.email || '')}</td>
+      <td><span class="type-badge">${fmtRole(u.role)}</span></td>
+      <td><span class="type-badge" style="background:${status.color};color:#fff;">${status.label}</span></td>
+      <td>${u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—'}</td>
+      <td class="td-row-actions">
+        <div class="row-menu">
+          <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Actions">⋮</button>
+          <div class="row-menu-dropdown">
+            <button class="row-menu-item row-menu-danger" onclick="deleteUserAccount('${u.id}', '${TFP.esc(u.email || '')}')">🗑️ Delete Account</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+  }).join('');
+}
+
+async function deleteUserAccount(targetUid, email) {
+  const confirmed = await asyncConfirm(`Permanently delete ${email}'s account and all their data? This cannot be undone.`);
+  if (!confirmed) return;
+
+  try {
+    await FS.deleteAccount(targetUid);
+  } catch (err) {
+    showToast(err.message || 'Could not delete this account.', 'error');
+    return;
+  }
+  showToast('Account deleted.', 'info');
+  await renderPendingAccounts();
+  await renderAllUsers();
 }
