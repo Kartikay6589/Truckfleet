@@ -116,6 +116,10 @@
             <span class="lni-icon">🏢</span>
             <span class="lni-label">Party</span>
           </button>
+          <button class="left-nav-item" id="nav-bank" onclick="switchView('bank')" title="Bank Details">
+            <span class="lni-icon">🏦</span>
+            <span class="lni-label">Bank Details</span>
+          </button>
           <button class="left-nav-item" id="nav-trips" onclick="switchView('trips')" title="Trip Registration">
             <span class="lni-icon">🗺️</span>
             <span class="lni-label">Trip Registration</span>
@@ -480,6 +484,69 @@
       </div>
 
       <!-- ══════════════════════════════
+           VIEW 2.85 — BANK DETAILS
+      ══════════════════════════════ -->
+      <div class="view hidden" id="view-bank">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">🏦 Bank Details</h1>
+            <p class="view-subtitle">Manage all your registered bank accounts</p>
+          </div>
+          <button class="btn-primary-action" id="btn-show-add-bank" onclick="toggleAddBankForm()">
+            ➕ Add Bank
+          </button>
+        </div>
+
+        <!-- Add Bank Form -->
+        <div class="add-vehicle-panel" id="add-bank-panel" style="display:none">
+          <div class="avp-header">
+            <h3 id="bank-panel-title">Register a New Bank</h3>
+            <button class="avp-close" onclick="toggleAddBankForm()">✕</button>
+          </div>
+          <div class="form-error" id="bank-error"></div>
+          <form id="form-add-bank" onsubmit="handleAddBank(event)">
+            <div class="avp-fields">
+              <div class="avp-field">
+                <label for="bank-name">🏦 Bank Name</label>
+                <input type="text" id="bank-name" placeholder="e.g. State Bank of India" required />
+              </div>
+              <div class="avp-field">
+                <label for="bank-account-number">🔢 Bank Account Number</label>
+                <input type="text" id="bank-account-number" placeholder="e.g. 123456789012" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required />
+              </div>
+              <div class="avp-field">
+                <label for="bank-ifsc">🏷️ IFSC Code</label>
+                <input type="text" id="bank-ifsc" placeholder="e.g. SBIN0001234" maxlength="11" oninput="this.value = this.value.toUpperCase()" required />
+              </div>
+            </div>
+            <button type="submit" class="btn-submit-vehicle" id="bank-submit-btn">➕ Add Bank</button>
+          </form>
+        </div>
+
+        <!-- Bank Table -->
+        <div class="vehicles-table-wrap">
+          <div class="vtw-toolbar">
+            <span class="vtw-count" id="btw-count">0 banks registered</span>
+          </div>
+          <table class="data-table" id="bank-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Bank Name</th>
+                <th>Account Number</th>
+                <th>IFSC Code</th>
+                <th>Added On</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="bank-tbody">
+              <tr class="empty-row"><td colspan="6">No banks registered yet. Click "Add Bank" to get started.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════
            VIEW 3 — TRIP REGISTRATION
       ══════════════════════════════ -->
       <div class="view hidden" id="view-trips">
@@ -716,8 +783,14 @@
                     <option value="">Select Party</option>
                   </select>
                 </div>
+                <div class="avp-field">
+                  <label for="trip-select-bank">🏦 Select Bank</label>
+                  <select id="trip-select-bank">
+                    <option value="">No bank selected</option>
+                  </select>
+                </div>
               </div>
-              <p class="avp-hint">Only parties registered on the "Party" tab show up here — add one there first if you don't see it.</p>
+              <p class="avp-hint">Only parties/banks registered on the "Party"/"Bank Details" tabs show up here — add one there first if you don't see it.</p>
 
               <div class="confirm-actions">
                 <button class="btn-confirm-register" onclick="confirmTrip()">✅ Register Trip</button>

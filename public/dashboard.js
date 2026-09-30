@@ -70,6 +70,7 @@ let currentBrokerTrips = [];
 let currentNotifications = [];
 let currentDrivers = [];
 let currentParties = [];
+let currentBanks = [];
 
 // All real data lives in Firestore under users/{uid}/..., scoped to the
 // signed-in Google account — see firebase-init.js's FS helper.
@@ -96,10 +97,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  const [vehicles, drivers, parties, trips, brokerTrips, notifications] = await Promise.all([
+  const [vehicles, drivers, parties, banks, trips, brokerTrips, notifications] = await Promise.all([
     FS.getAll(uid, 'vehicles'),
     FS.getAll(uid, 'drivers'),
     FS.getAll(uid, 'parties'),
+    FS.getAll(uid, 'banks'),
     FS.getAll(uid, 'trips'),
     FS.getAll(uid, 'brokerTrips'),
     FS.getAll(uid, 'notifications')
@@ -107,6 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   currentVehicles = vehicles;
   currentDrivers = drivers;
   currentParties = parties;
+  currentBanks = banks;
   currentTrips = trips;
   currentBrokerTrips = brokerTrips;
   currentNotifications = notifications.sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 25);
@@ -116,6 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderVehiclesTable();
   renderDriversTable();
   renderPartiesTable();
+  renderBanksTable();
   renderTripsList();
   renderBrokerList();
   renderNotifications();
@@ -140,6 +144,7 @@ function renderSidemenuIdentity() {
 function getVehicles() { return currentVehicles; }
 function getDrivers() { return currentDrivers; }
 function getParties() { return currentParties; }
+function getBanks() { return currentBanks; }
 function getTrips() { return currentTrips; }
 function getNotifications() { return currentNotifications; }
 
@@ -427,6 +432,7 @@ function switchView(view) {
   if (view === 'vehicles') renderVehiclesTable();
   if (view === 'drivers')  renderDriversTable();
   if (view === 'party')    renderPartiesTable();
+  if (view === 'bank')     renderBanksTable();
   if (view === 'trips')    renderTripsList();
   if (view === 'broker')   renderBrokerList();
   if (view === 'dashboard') refreshStats();
@@ -1260,6 +1266,152 @@ async function deleteParty(id) {
 }
 
 /* ════════════════════════════════════════════
+   BANK DETAILS
+════════════════════════════════════════════ */
+let addBankPanelOpen = false;
+let editingBankId = null;
+
+function resetBankFormToAddMode() {
+  editingBankId = null;
+  document.getElementById('bank-panel-title').textContent = 'Register a New Bank';
+  document.getElementById('bank-submit-btn').textContent = '➕ Add Bank';
+  document.getElementById('form-add-bank').reset();
+}
+
+function editBank(id) {
+  const b = currentBanks.find(x => x.id === id);
+  if (!b) return;
+
+  editingBankId = id;
+  if (!addBankPanelOpen) toggleAddBankForm();
+
+  document.getElementById('bank-panel-title').textContent = `Edit Bank — ${b.bankName}`;
+  document.getElementById('bank-submit-btn').textContent = '💾 Save Changes';
+  document.getElementById('bank-name').value = b.bankName;
+  document.getElementById('bank-account-number').value = b.accountNumber;
+  document.getElementById('bank-ifsc').value = b.ifsc;
+
+  document.getElementById('add-bank-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleAddBankForm() {
+  addBankPanelOpen = !addBankPanelOpen;
+  if (!addBankPanelOpen) resetBankFormToAddMode();
+  const panel = document.getElementById('add-bank-panel');
+  const btn = document.getElementById('btn-show-add-bank');
+
+  panel.style.display = addBankPanelOpen ? 'block' : 'none';
+  if (btn) {
+    btn.textContent = addBankPanelOpen ? '✕ Close' : '➕ Add Bank';
+  }
+
+  if (addBankPanelOpen) {
+    setTimeout(() => document.getElementById('bank-name').focus(), 100);
+  }
+}
+
+async function handleAddBank(e) {
+  e.preventDefault();
+  const bankName = document.getElementById('bank-name').value.trim();
+  const accountNumber = document.getElementById('bank-account-number').value.trim();
+  const ifsc = document.getElementById('bank-ifsc').value.trim();
+
+  if (!/^\d{9,18}$/.test(accountNumber)) {
+    showFormError('bank-error', '⚠️ Bank Account Number must be 9-18 digits.');
+    return;
+  }
+  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
+    showFormError('bank-error', '⚠️ IFSC Code doesn\'t look valid (e.g. SBIN0001234).');
+    return;
+  }
+
+  const data = { bankName, accountNumber, ifsc };
+
+  if (editingBankId) {
+    try {
+      await FS.update(uid, 'banks', editingBankId, data);
+    } catch (err) {
+      showFormError('bank-error', `⚠️ ${err.message || 'Could not save these changes.'}`);
+      return;
+    }
+    const existing = currentBanks.find(b => b.id === editingBankId);
+    Object.assign(existing, data);
+    await FS.addNotification(uid, `Bank updated: ${bankName}`);
+    refreshNotifications();
+    toggleAddBankForm();
+    renderBanksTable();
+    showToast(`Bank ${bankName} updated!`, 'success');
+    return;
+  }
+
+  let bank;
+  try {
+    bank = await FS.add(uid, 'banks', Object.assign({ addedAt: new Date().toISOString() }, data));
+  } catch (err) {
+    showFormError('bank-error', `⚠️ ${err.message || 'Could not add this bank.'}`);
+    return;
+  }
+
+  currentBanks.push(bank);
+  await FS.addNotification(uid, `New bank added: ${bankName}`);
+  refreshNotifications();
+  toggleAddBankForm();
+  renderBanksTable();
+  showToast(`Bank ${bankName} added!`, 'success');
+}
+
+function renderBanksTable() {
+  const banks = getBanks();
+  const tbody = document.getElementById('bank-tbody');
+  const count = document.getElementById('btw-count');
+  if (!tbody || !count) return;
+  count.textContent = `${banks.length} bank${banks.length !== 1 ? 's' : ''} registered`;
+
+  if (banks.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No banks registered yet. Click "Add Bank" to get started.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = banks.map((b, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${b.bankName}</strong></td>
+      <td>${b.accountNumber}</td>
+      <td>${b.ifsc}</td>
+      <td>${new Date(b.addedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</td>
+      <td class="td-row-actions">
+        <div class="row-menu">
+          <button class="row-menu-btn" onclick="toggleRowMenu(this, event)" title="Actions">⋮</button>
+          <div class="row-menu-dropdown">
+            <button class="row-menu-item" onclick="editBank('${b.id}')">✏️ Edit</button>
+            <button class="row-menu-item row-menu-danger" onclick="deleteBank('${b.id}')">🗑️ Delete</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function deleteBank(id) {
+  const confirmed = await asyncConfirm('Remove this bank?');
+  if (!confirmed) return;
+  const b = currentBanks.find(x => x.id === id);
+  if (!b) return;
+
+  try {
+    await FS.remove(uid, 'banks', id);
+  } catch (err) {
+    showToast(err.message || 'Could not remove this bank.', 'error');
+    return;
+  }
+
+  currentBanks = currentBanks.filter(x => x.id !== id);
+  await FS.addNotification(uid, `Bank removed: ${b.bankName}`);
+  refreshNotifications();
+  renderBanksTable();
+  showToast('Bank removed.', 'info');
+}
+
+/* ════════════════════════════════════════════
    TRIP WIZARD STATE
 ════════════════════════════════════════════ */
 let wizard = {
@@ -1425,7 +1577,7 @@ function gotoWizardStep(step) {
 
   // Build step-specific UI
   if (step === 1) buildVehicleSelector();
-  if (step === 9) { buildConfirmCard(); populateTripPartySelect(); }
+  if (step === 9) { buildConfirmCard(); populateTripPartySelect(); populateTripBankSelect(); }
 }
 
 /* Lists parties registered on the Party tab so one can be picked directly
@@ -1441,6 +1593,20 @@ function populateTripPartySelect() {
 
   // custom-select.js built this dropdown's visible UI from whatever options
   // existed at page load — refresh it now that the option list changed.
+  if (window.refreshCustomSelect) refreshCustomSelect(sel);
+}
+
+/* Lists banks registered on the Bank Details tab — optional, unlike Select
+   Party, since not every trip's payment is tied to a specific account. */
+function populateTripBankSelect() {
+  const sel = document.getElementById('trip-select-bank');
+  const banks = getBanks();
+
+  const current = sel.value;
+  sel.innerHTML = '<option value="">No bank selected</option>' +
+    banks.map(b => `<option value="${b.id}" data-name="${TFP.esc(b.bankName)}" data-account="${TFP.esc(b.accountNumber)}" data-ifsc="${TFP.esc(b.ifsc)}">${TFP.esc(b.bankName)} (••${b.accountNumber.slice(-4)})</option>`).join('');
+  if ([...sel.options].some(o => o.value === current)) sel.value = current;
+
   if (window.refreshCustomSelect) refreshCustomSelect(sel);
 }
 
@@ -1729,6 +1895,12 @@ async function confirmTrip() {
   const partyName = partyId ? partySelect.selectedOptions[0].dataset.name : '';
   const partyPhone = partyId ? partySelect.selectedOptions[0].dataset.phone : '';
 
+  const bankSelect = document.getElementById('trip-select-bank');
+  const bankId = bankSelect.value || null;
+  const bankName = bankId ? bankSelect.selectedOptions[0].dataset.name : '';
+  const bankAccountNumber = bankId ? bankSelect.selectedOptions[0].dataset.account : '';
+  const bankIfsc = bankId ? bankSelect.selectedOptions[0].dataset.ifsc : '';
+
   let trip;
   try {
     trip = await FS.add(uid, 'trips', {
@@ -1757,6 +1929,10 @@ async function confirmTrip() {
       partyId,
       partyName,
       partyPhone,
+      bankId,
+      bankName,
+      bankAccountNumber,
+      bankIfsc,
       registeredAt: dateInputToISOString(document.getElementById('trip-date').value)
     });
   } catch (err) {
