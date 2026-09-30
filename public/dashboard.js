@@ -1265,6 +1265,114 @@ async function deleteParty(id) {
   showToast('Party removed.', 'info');
 }
 
+/* ── Export every registered party (one row each) to a real .xlsx file. ── */
+function exportPartiesToExcel() {
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel export library failed to load. Check your connection and try again.', 'error');
+    return;
+  }
+  const parties = getParties();
+  if (parties.length === 0) {
+    showToast('No parties to export.', 'error');
+    return;
+  }
+
+  const rows = parties.map((p, i) => ({
+    'S.No': i + 1,
+    'Party Name': p.name,
+    'Contact Number': p.contact,
+    'Address': p.address,
+    'Party GST': fmtPartyGst(p),
+    'Builty Number': p.builtyNumber,
+    'Added On': new Date(p.addedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const contactCol = 2; // 0-based: "Contact Number" is the 3rd column
+  for (let r = range.s.r + 1; r <= range.e.r; r++) {
+    const ref = XLSX.utils.encode_cell({ r, c: contactCol });
+    if (ws[ref]) { ws[ref].t = 's'; ws[ref].z = '@'; }
+  }
+  ws['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 14 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Parties');
+  XLSX.writeFile(wb, `TruckFleet-Parties-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  showToast(`Exported ${parties.length} part${parties.length !== 1 ? 'ies' : 'y'} to Excel.`, 'success');
+}
+
+async function handlePartyImportFile(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  await importPartiesFromExcel(file);
+}
+
+/* ── Import parties from an .xlsx file. Accepts the same headers this app
+   exports (Party Name, Contact Number, Address required; Party GST,
+   Builty Number optional). Parties already registered (matched by
+   contact number) are skipped, not duplicated. ── */
+async function importPartiesFromExcel(file) {
+  let rows;
+  try {
+    rows = await readExcelFile(file);
+  } catch (err) {
+    showToast(err.message, 'error');
+    return;
+  }
+  if (rows.length === 0) {
+    showToast('That file has no rows to import.', 'error');
+    return;
+  }
+
+  const existingContacts = new Set(currentParties.map(p => p.contact));
+  let added = 0, skipped = 0, invalid = 0;
+
+  for (const row of rows) {
+    const name = String(findColumn(row, ['party name', 'name']) || '').trim();
+    const contact = String(findColumn(row, ['contact number', 'party contact number', 'contact', 'phone']) || '').trim().replace(/[^0-9]/g, '').slice(0, 10);
+    const address = String(findColumn(row, ['address', 'party address']) || '').trim();
+    const builtyNumber = String(findColumn(row, ['builty number', 'builty']) || '').trim().toUpperCase();
+    const gstRaw = String(findColumn(row, ['party gst', 'gst']) || '').trim().toUpperCase();
+
+    if (!name || !/^\d{10}$/.test(contact) || !address) { invalid++; continue; }
+    if (existingContacts.has(contact)) { skipped++; continue; }
+
+    let gstType = 'NILL', gstRate = 0;
+    const gstMatch = gstRaw.match(/^(IGST|CGST\+SGST|CSGST)\s*(\d+)?%?$/);
+    if (gstMatch) {
+      gstType = gstMatch[1] === 'CGST+SGST' ? 'CSGST' : gstMatch[1];
+      gstRate = parseInt(gstMatch[2], 10) || 0;
+    }
+
+    try {
+      const party = await FS.add(uid, 'parties', {
+        name, contact, address, gstType, gstRate,
+        builtyNumber: builtyNumber || 'N/A',
+        addedAt: new Date().toISOString()
+      });
+      currentParties.push(party);
+      existingContacts.add(contact);
+      added++;
+    } catch (err) {
+      invalid++;
+    }
+  }
+
+  renderPartiesTable();
+  if (added > 0) {
+    await FS.addNotification(uid, `Imported ${added} part${added !== 1 ? 'ies' : 'y'} from Excel`);
+    refreshNotifications();
+  }
+
+  const parts = [];
+  if (added) parts.push(`${added} added`);
+  if (skipped) parts.push(`${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped`);
+  if (invalid) parts.push(`${invalid} row${invalid !== 1 ? 's' : ''} had missing/invalid data`);
+  showToast(summarizeImport(parts, 'imported'), added > 0 ? 'success' : 'error');
+}
+
 /* ════════════════════════════════════════════
    BANK DETAILS
 ════════════════════════════════════════════ */
@@ -1409,6 +1517,102 @@ async function deleteBank(id) {
   refreshNotifications();
   renderBanksTable();
   showToast('Bank removed.', 'info');
+}
+
+/* ── Export every registered bank (one row each) to a real .xlsx file.
+   Account Number and IFSC are forced to text cells so a numeric-looking
+   account number doesn't lose leading zeros. ── */
+function exportBanksToExcel() {
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel export library failed to load. Check your connection and try again.', 'error');
+    return;
+  }
+  const banks = getBanks();
+  if (banks.length === 0) {
+    showToast('No banks to export.', 'error');
+    return;
+  }
+
+  const rows = banks.map((b, i) => ({
+    'S.No': i + 1,
+    'Bank Name': b.bankName,
+    'Account Number': b.accountNumber,
+    'IFSC Code': b.ifsc,
+    'Added On': new Date(b.addedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (const col of [2, 3]) { // Account Number, IFSC Code
+    for (let r = range.s.r + 1; r <= range.e.r; r++) {
+      const ref = XLSX.utils.encode_cell({ r, c: col });
+      if (ws[ref]) { ws[ref].t = 's'; ws[ref].z = '@'; }
+    }
+  }
+  ws['!cols'] = [{ wch: 6 }, { wch: 24 }, { wch: 18 }, { wch: 14 }, { wch: 14 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Banks');
+  XLSX.writeFile(wb, `TruckFleet-Banks-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  showToast(`Exported ${banks.length} bank${banks.length !== 1 ? 's' : ''} to Excel.`, 'success');
+}
+
+async function handleBankImportFile(event) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  await importBanksFromExcel(file);
+}
+
+/* ── Import banks from an .xlsx file. Accepts the same headers this app
+   exports (Bank Name, Account Number, IFSC Code — all required and
+   validated the same way the Add Bank form does). Banks already
+   registered (matched by account number) are skipped, not duplicated. ── */
+async function importBanksFromExcel(file) {
+  let rows;
+  try {
+    rows = await readExcelFile(file);
+  } catch (err) {
+    showToast(err.message, 'error');
+    return;
+  }
+  if (rows.length === 0) {
+    showToast('That file has no rows to import.', 'error');
+    return;
+  }
+
+  const existingAccounts = new Set(currentBanks.map(b => b.accountNumber));
+  let added = 0, skipped = 0, invalid = 0;
+
+  for (const row of rows) {
+    const bankName = String(findColumn(row, ['bank name', 'bank']) || '').trim();
+    const accountNumber = String(findColumn(row, ['account number', 'bank account number', 'account no']) || '').trim().replace(/[^0-9]/g, '');
+    const ifsc = String(findColumn(row, ['ifsc code', 'ifsc']) || '').trim().toUpperCase();
+
+    if (!bankName || !/^\d{9,18}$/.test(accountNumber) || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) { invalid++; continue; }
+    if (existingAccounts.has(accountNumber)) { skipped++; continue; }
+
+    try {
+      const bank = await FS.add(uid, 'banks', { bankName, accountNumber, ifsc, addedAt: new Date().toISOString() });
+      currentBanks.push(bank);
+      existingAccounts.add(accountNumber);
+      added++;
+    } catch (err) {
+      invalid++;
+    }
+  }
+
+  renderBanksTable();
+  if (added > 0) {
+    await FS.addNotification(uid, `Imported ${added} bank${added !== 1 ? 's' : ''} from Excel`);
+    refreshNotifications();
+  }
+
+  const parts = [];
+  if (added) parts.push(`${added} added`);
+  if (skipped) parts.push(`${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped`);
+  if (invalid) parts.push(`${invalid} row${invalid !== 1 ? 's' : ''} had missing/invalid data`);
+  showToast(summarizeImport(parts, 'imported'), added > 0 ? 'success' : 'error');
 }
 
 /* ════════════════════════════════════════════

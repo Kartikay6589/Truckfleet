@@ -462,6 +462,15 @@
         <div class="vehicles-table-wrap">
           <div class="vtw-toolbar">
             <span class="vtw-count" id="ptw-count">0 parties registered</span>
+            <div class="vtw-excel-actions">
+              <input type="file" id="party-import-input" accept=".xlsx,.xls" style="display:none" onchange="handlePartyImportFile(event)" />
+              <button type="button" class="btn-import-excel" id="btn-import-parties" onclick="document.getElementById('party-import-input').click()">
+                📥 Import from Excel
+              </button>
+              <button type="button" class="btn-export-excel" id="btn-export-parties" onclick="exportPartiesToExcel()">
+                📊 Export to Excel
+              </button>
+            </div>
           </div>
           <table class="data-table" id="party-table">
             <thead>
@@ -527,6 +536,15 @@
         <div class="vehicles-table-wrap">
           <div class="vtw-toolbar">
             <span class="vtw-count" id="btw-count">0 banks registered</span>
+            <div class="vtw-excel-actions">
+              <input type="file" id="bank-import-input" accept=".xlsx,.xls" style="display:none" onchange="handleBankImportFile(event)" />
+              <button type="button" class="btn-import-excel" id="btn-import-banks" onclick="document.getElementById('bank-import-input').click()">
+                📥 Import from Excel
+              </button>
+              <button type="button" class="btn-export-excel" id="btn-export-banks" onclick="exportBanksToExcel()">
+                📊 Export to Excel
+              </button>
+            </div>
           </div>
           <table class="data-table" id="bank-table">
             <thead>
