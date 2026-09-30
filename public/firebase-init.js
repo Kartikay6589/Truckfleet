@@ -25,6 +25,12 @@ const fbAuth = firebase.auth();
 const fbDb = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 
+// The one account that can approve/deny new Fleet Owner & Company signups —
+// see firestore.rules for how this same address gates the "approved" field
+// server-side (a hardcoded check here is only ever a UI convenience, never
+// the actual security boundary).
+const ADMIN_EMAIL = 'adminapproval01@gmail.com';
+
 /* ════════════════════════════════════════════
    FS — small Firestore/Auth helper layer.
    Every account's data lives under users/{uid}/... so Firestore Security
@@ -60,9 +66,16 @@ window.FS = {
     const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
     const user = cred.user;
     try { await user.updateProfile({ displayName: `${firstName} ${lastName}`.trim() }); } catch (e) {}
+    const isAdmin = email.trim().toLowerCase() === ADMIN_EMAIL;
+    const finalRole = isAdmin ? 'admin' : this.normalizeRole(role);
     const profile = {
       firstName, lastName, email, phone: '', photoURL: '',
-      role: this.normalizeRole(role), createdAt: new Date().toISOString()
+      role: finalRole, createdAt: new Date().toISOString(),
+      // New Fleet Owner / Company accounts wait for the admin to approve
+      // them before they can use the app — see dashboard.js's boot check.
+      // Admin and driver accounts (drivers are already invite-linked by an
+      // approved owner) never need this gate.
+      approved: (finalRole === 'fleet-owner' || finalRole === 'company') ? false : true
     };
     await this.userDoc(user.uid).set(profile);
     return user;
@@ -129,14 +142,17 @@ window.FS = {
     if (snap.exists) return snap.data();
 
     const [firstName, ...rest] = (user.displayName || 'New User').split(' ');
+    const isAdmin = (user.email || '').trim().toLowerCase() === ADMIN_EMAIL;
+    const finalRole = isAdmin ? 'admin' : this.normalizeRole(role);
     const profile = {
       firstName: firstName || 'New',
       lastName: rest.join(' ') || 'User',
       email: user.email || '',
       phone: user.phoneNumber || '',
       photoURL: user.photoURL || '',
-      role: this.normalizeRole(role),
-      createdAt: new Date().toISOString()
+      role: finalRole,
+      createdAt: new Date().toISOString(),
+      approved: (finalRole === 'fleet-owner' || finalRole === 'company') ? false : true
     };
     await ref.set(profile);
     return profile;
@@ -145,6 +161,27 @@ window.FS = {
   async getUserProfile(uid) {
     const snap = await this.userDoc(uid).get();
     return snap.exists ? snap.data() : null;
+  },
+
+  /* ── Admin: approving new Fleet Owner / Company signups ──
+     Only the ADMIN_EMAIL account can actually read across every user's
+     profile or write the "approved"/"denied" fields — enforced by
+     firestore.rules, not by this file. See admin.js for the UI. */
+  async getPendingAccounts() {
+    const snap = await fbDb.collection('users').where('approved', '==', false).get();
+    // A denied account also has approved:false (it never becomes true), so
+    // it would otherwise sit in this list forever looking "pending" again —
+    // filter those out here since Firestore can't do a "!= true" filter
+    // alongside an "== false" one without a composite index.
+    return snap.docs.map(this.docToObj).filter(u => !u.denied);
+  },
+
+  async approveAccount(targetUid) {
+    await this.userDoc(targetUid).update({ approved: true, denied: false });
+  },
+
+  async denyAccount(targetUid) {
+    await this.userDoc(targetUid).update({ approved: false, denied: true });
   },
 
   /* A user's own subcollection, e.g. FS.col(uid, 'vehicles') */

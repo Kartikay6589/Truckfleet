@@ -12,21 +12,53 @@ rules_version = '2';
 // account is ever exposed to them.
 service cloud.firestore {
   match /databases/{database}/documents {
+    // The one account allowed to approve/deny new Fleet Owner & Company
+    // signups. Checked against the Auth token's own (verified) email, never
+    // anything client-supplied, so this can't be spoofed by writing a
+    // different "role" or "email" field into a user's own profile doc.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() == 'adminapproval01@gmail.com';
+    }
+
     match /users/{userId} {
       allow read, create, delete: if request.auth != null && request.auth.uid == userId;
 
+      // The admin needs to see every account's approved/denied status to
+      // list pending signups — this never grants write access to anything
+      // but the approve/deny fields (see the update rule below).
+      allow read: if isAdmin();
+
       // Role is chosen once at sign-up and locked from then on (see the
       // "I am a..." picker in index.html) — no update may ever change it,
-      // even one crafted outside the app's own UI.
+      // even one crafted outside the app's own UI. approved/denied are
+      // likewise off-limits to the account itself — only the admin rule
+      // below may ever flip those, otherwise a Fleet Owner could just
+      // self-approve with a direct Firestore write.
       allow update: if request.auth != null && request.auth.uid == userId
-                    && request.resource.data.role == resource.data.role;
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.get('approved', null) == resource.data.get('approved', null)
+                    && request.resource.data.get('denied', null) == resource.data.get('denied', null);
+
+      // The admin may only ever flip approved/denied on someone else's
+      // profile — never their role, name, or anything else.
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approved', 'denied']);
 
       // Recursive wildcard so the owner keeps full access to every nested
       // subcollection at any depth (vehicles, drivers, trips,
       // trips/{id}/expenses, trips/{id}/issues, trips/{id}/podSubmissions,
       // etc.) — the more specific driver-access rules below simply add to
       // this, they never take away from it.
-      match /{document=**} {
+      //
+      // Requires at least one path segment (the subcollection name) before
+      // the recursive part on purpose: {document=**} alone also matches
+      // zero segments, i.e. the users/{userId} document itself, which would
+      // silently undo the approved/denied lock above (a bare recursive
+      // wildcard here would let an owner just write {approved:true} on
+      // their own profile and skip admin approval entirely).
+      match /{subcollection}/{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 

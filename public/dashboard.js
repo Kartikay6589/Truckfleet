@@ -86,6 +86,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const profile = await FS.ensureUserProfile(user);
   currentUser = Object.assign({ id: uid }, profile);
+
+  // The admin account never touches any Fleet Owner's actual data — it
+  // only ever sees the pending-approvals list, via admin.js. See
+  // firestore.rules for what makes this safe.
+  if (currentUser.role === 'admin') {
+    renderSidemenuIdentity();
+    await initAdminDashboard();
+    document.body.classList.remove('app-loading');
+    return;
+  }
+
+  // A brand-new Fleet Owner/Company account waits here until the admin
+  // approves it — approved is only ever undefined (accounts created before
+  // this gate existed, which stay unaffected) or a real boolean, so this
+  // only blocks accounts explicitly marked false.
+  if ((currentUser.role === 'fleet-owner' || currentUser.role === 'company') && currentUser.approved === false) {
+    document.getElementById('gate-icon').textContent = currentUser.denied ? '🚫' : '⏳';
+    document.getElementById('gate-title').textContent = currentUser.denied ? 'Account Denied' : 'Waiting for Approval';
+    document.getElementById('gate-message').textContent = currentUser.denied
+      ? 'Your account request was not approved. If you think this is a mistake, please contact support.'
+      : "Your account has been created but is waiting on admin approval before you can start using TruckFleet Pro. This usually doesn't take long — check back soon.";
+    document.getElementById('gate-screen').style.display = 'flex';
+    document.body.classList.remove('app-loading');
+    return;
+  }
+
   renderSidemenuIdentity();
 
   // A driver account never touches the Fleet Owner's vehicles/trips/etc.

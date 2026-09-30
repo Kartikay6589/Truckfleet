@@ -116,6 +116,24 @@ body.app-loading .app-loading-screen{ display:flex; }
 }
 @keyframes appLoadingSpin{ to{ transform:rotate(360deg); } }
 
+/* ── Account gate (pending-approval / denied screen) — shown instead of the
+   dashboard shell for a Fleet Owner/Company account that hasn't been
+   approved yet. Independent of .app-loading-screen (that one only exists
+   until data finishes loading; this one can stay up indefinitely). ── */
+.gate-screen{
+  position:fixed; inset:0; z-index:99998;
+  display:none; align-items:center; justify-content:center;
+  background:var(--bg); padding:1.5rem;
+}
+.gate-card{
+  max-width:420px; text-align:center;
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-xl);
+  padding:3rem 2.5rem;
+}
+.gate-icon{ font-size:3rem; margin-bottom:1.25rem; }
+.gate-title{ font-size:1.4rem; font-weight:800; color:var(--heading); margin-bottom:.75rem; }
+.gate-message{ font-size:.95rem; color:var(--text2); line-height:1.6; margin-bottom:1.75rem; }
+
 /* ── Custom Scrollbar (HIDDEN GLOBALLY) ── */
 *::-webkit-scrollbar { display: none !important; }
 * { -ms-overflow-style: none !important; scrollbar-width: none !important; }

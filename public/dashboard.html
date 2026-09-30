@@ -21,6 +21,18 @@
     <div class="app-loading-spinner"></div>
   </div>
 
+  <!-- Shown instead of the dashboard for a Fleet Owner/Company account
+       that's still waiting on (or was denied) admin approval — see the
+       gate check in dashboard.js's DOMContentLoaded handler. -->
+  <div class="gate-screen" id="gate-screen">
+    <div class="gate-card">
+      <div class="gate-icon" id="gate-icon">⏳</div>
+      <h2 class="gate-title" id="gate-title">Waiting for Approval</h2>
+      <p class="gate-message" id="gate-message">Your account has been created but is waiting on admin approval before you can start using TruckFleet Pro. This usually doesn't take long — check back soon.</p>
+      <button class="btn-primary-action" onclick="FS.signOut().then(() => location.href='index.html')">Sign Out</button>
+    </div>
+  </div>
+
   <div class="cursor-circle" id="cursor-circle"></div>
   <div class="cursor-dot"    id="cursor-dot"></div>
   <div class="theme-ripple"  id="theme-ripple"></div>
@@ -132,6 +144,11 @@
           <button class="left-nav-item" id="nav-driver" style="display:none" onclick="switchView('driver')" title="My Duty">
             <span class="lni-icon">🚚</span>
             <span class="lni-label">My Duty</span>
+          </button>
+          <!-- The admin account sees only this one — see initAdminDashboard() in admin.js -->
+          <button class="left-nav-item" id="nav-admin" style="display:none" onclick="switchView('admin')" title="Pending Approvals">
+            <span class="lni-icon">🛡️</span>
+            <span class="lni-label">Pending Approvals</span>
           </button>
         </nav>
       </div>
@@ -1150,6 +1167,40 @@
           </div>
         </div>
       </div>
+
+      <!-- ══════════════════════════════
+           VIEW 8 — ADMIN (only ever shown to role: "admin" —
+           see initAdminDashboard() in admin.js)
+      ══════════════════════════════ -->
+      <div class="view hidden" id="view-admin">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">🛡️ Pending Approvals</h1>
+            <p class="view-subtitle">Review and approve new Fleet Owner / Company sign-ups</p>
+          </div>
+        </div>
+
+        <div class="vehicles-table-wrap">
+          <div class="vtw-toolbar">
+            <span class="vtw-count" id="atw-count">0 accounts pending</span>
+          </div>
+          <table class="data-table" id="admin-pending-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Signed Up</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-pending-tbody">
+              <tr class="empty-row"><td colspan="6">No accounts waiting on approval right now.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -1336,6 +1387,7 @@
   <script src="india-locations.js"></script>
   <script src="dashboard.js"></script>
   <script src="driver.js"></script>
+  <script src="admin.js"></script>
   <script src="custom-select.js"></script>
 </body>
 </html>

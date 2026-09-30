@@ -41,7 +41,7 @@ async function initDriverDashboard() {
    Fleet Owner and Company accounts are unaffected — they keep the full nav. */
 function applyRoleBasedNav(role) {
   if (role !== 'driver') return;
-  ['nav-dashboard', 'nav-vehicles', 'nav-drivers', 'nav-salary', 'nav-trips', 'nav-broker'].forEach(id => {
+  ['nav-dashboard', 'nav-vehicles', 'nav-drivers', 'nav-salary', 'nav-party', 'nav-bank', 'nav-trips', 'nav-broker', 'nav-admin'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
