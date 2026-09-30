@@ -551,8 +551,14 @@
               <div class="wp-icon">📍</div>
               <h2 class="wp-title">Pickup Location</h2>
               <p class="wp-desc">Where will the goods be picked up from?</p>
-              <div class="wp-input-wrap">
-                <input type="text" id="trip-from" class="wp-input" placeholder="e.g. Delhi Warehouse, Sector 62" />
+              <div class="wp-input-wrap" style="margin-bottom:.75rem;">
+                <select id="trip-from-state" onchange="handleLocationStateChange('from')">
+                  <option value="">Select State (optional)</option>
+                </select>
+              </div>
+              <div class="wp-input-wrap loc-autocomplete-wrap">
+                <input type="text" id="trip-from" class="wp-input" placeholder="e.g. Delhi Warehouse, Sector 62" autocomplete="off" oninput="handleLocationInput('from')" onfocus="handleLocationInput('from')" />
+                <div class="loc-suggestions" id="trip-from-suggestions"></div>
               </div>
               <div class="wp-error" id="wp2-error"></div>
               <button class="btn-wizard-next" onclick="wizardNext(2)">Continue →</button>
@@ -565,8 +571,14 @@
               <div class="wp-icon">🏁</div>
               <h2 class="wp-title">Delivery Location</h2>
               <p class="wp-desc">Where should the goods be delivered?</p>
-              <div class="wp-input-wrap">
-                <input type="text" id="trip-to" class="wp-input" placeholder="e.g. Mumbai JNPT Port" />
+              <div class="wp-input-wrap" style="margin-bottom:.75rem;">
+                <select id="trip-to-state" onchange="handleLocationStateChange('to')">
+                  <option value="">Select State (optional)</option>
+                </select>
+              </div>
+              <div class="wp-input-wrap loc-autocomplete-wrap">
+                <input type="text" id="trip-to" class="wp-input" placeholder="e.g. Mumbai JNPT Port" autocomplete="off" oninput="handleLocationInput('to')" onfocus="handleLocationInput('to')" />
+                <div class="loc-suggestions" id="trip-to-suggestions"></div>
               </div>
               <div class="wp-error" id="wp3-error"></div>
               <button class="btn-wizard-next" onclick="wizardNext(3)">Continue →</button>
@@ -1215,6 +1227,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
   <script src="firebase-init.js"></script>
 
+  <script src="india-locations.js"></script>
   <script src="dashboard.js"></script>
   <script src="driver.js"></script>
   <script src="custom-select.js"></script>

@@ -1190,6 +1190,23 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   border-radius:var(--r-sm);color:var(--red);font-size:.85rem;font-weight:500;
 }
 .wp-error.show{display:block;}
+
+/* Pickup/Delivery location autocomplete — state select above a text input
+   whose suggestions drop down from a plain-text list filtered as you type. */
+.loc-autocomplete-wrap{ position:relative; }
+.loc-suggestions{
+  display:none; position:absolute; top:calc(100% + 6px); left:0; right:0;
+  max-height:240px; overflow-y:auto; text-align:left;
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r-md);
+  box-shadow:0 10px 30px rgba(0,0,0,0.35); z-index:60;
+}
+.loc-suggestions.open{ display:block; }
+.loc-suggestion-item{
+  padding:.65rem 1.1rem; cursor:pointer; font-size:.95rem; color:var(--text);
+  transition:background var(--t-f);
+}
+.loc-suggestion-item:hover, .loc-suggestion-item.active{ background:rgba(var(--accent-rgb),0.12); color:var(--accent); }
+.loc-suggestion-empty{ padding:.65rem 1.1rem; font-size:.85rem; color:var(--text3); }
 .btn-wizard-next{
   width:100%;padding:.95rem;margin-top:1.5rem;
   background:var(--grad-accent);color:#fff;border-radius:var(--r-md);

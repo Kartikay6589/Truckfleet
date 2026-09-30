@@ -1273,6 +1273,77 @@ let wizard = {
   advance: 0,
 };
 
+/* Pickup/Delivery location autocomplete — populates the state selects from
+   india-locations.js once at load (before custom-select.js scans the page),
+   then filters India's city list as the user types. */
+function populateLocationStateSelects() {
+  if (!window.INDIA_STATES) return;
+  const optionsHtml = '<option value="">Select State (optional)</option>' +
+    window.INDIA_STATES.map(s => `<option value="${s}">${s}</option>`).join('');
+  ['trip-from-state', 'trip-to-state'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (sel) sel.innerHTML = optionsHtml;
+  });
+}
+populateLocationStateSelects();
+
+function getLocationCityPool(which) {
+  const stateSel = document.getElementById(`trip-${which}-state`);
+  const state = stateSel ? stateSel.value : '';
+  if (state && window.INDIA_CITIES_BY_STATE[state]) return window.INDIA_CITIES_BY_STATE[state];
+  return window.INDIA_ALL_CITIES || [];
+}
+
+function handleLocationStateChange(which) {
+  // Keep whatever was already typed and just re-filter against the new state.
+  handleLocationInput(which);
+}
+
+function handleLocationInput(which) {
+  const input = document.getElementById(`trip-${which}`);
+  const box = document.getElementById(`trip-${which}-suggestions`);
+  if (!input || !box) return;
+  const query = input.value.trim().toLowerCase();
+
+  if (!query) {
+    box.classList.remove('open');
+    box.innerHTML = '';
+    return;
+  }
+
+  const pool = getLocationCityPool(which);
+  const matches = pool.filter(c => c.toLowerCase().includes(query)).slice(0, 50);
+
+  if (matches.length === 0) {
+    box.innerHTML = '<div class="loc-suggestion-empty">No matching places found — you can still type your own.</div>';
+    box.classList.add('open');
+    return;
+  }
+
+  box.innerHTML = matches.map(c =>
+    `<div class="loc-suggestion-item" onclick="selectLocationSuggestion('${which}', '${c.replace(/'/g, "\\'")}')">${c}</div>`
+  ).join('');
+  box.classList.add('open');
+}
+
+function selectLocationSuggestion(which, city) {
+  const input = document.getElementById(`trip-${which}`);
+  if (input) input.value = city;
+  const box = document.getElementById(`trip-${which}-suggestions`);
+  if (box) { box.classList.remove('open'); box.innerHTML = ''; }
+}
+
+document.addEventListener('click', (e) => {
+  ['from', 'to'].forEach(which => {
+    const input = document.getElementById(`trip-${which}`);
+    const wrap = input && input.closest('.loc-autocomplete-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      const box = document.getElementById(`trip-${which}-suggestions`);
+      if (box) box.classList.remove('open');
+    }
+  });
+});
+
 function startTripWizard() {
   const vehicles = getVehicles();
   if (vehicles.length === 0) {
@@ -1286,6 +1357,12 @@ function startTripWizard() {
   document.getElementById('trip-wizard').style.display = 'block';
   document.getElementById('trip-from').value    = '';
   document.getElementById('trip-to').value      = '';
+  setSelectValue('trip-from-state', '');
+  setSelectValue('trip-to-state', '');
+  document.getElementById('trip-from-suggestions').innerHTML = '';
+  document.getElementById('trip-from-suggestions').classList.remove('open');
+  document.getElementById('trip-to-suggestions').innerHTML = '';
+  document.getElementById('trip-to-suggestions').classList.remove('open');
   document.getElementById('trip-total').value   = '';
   document.getElementById('trip-commission').value = '';
   document.getElementById('trip-advance').value = '';
