@@ -1927,6 +1927,13 @@ function selectGstType(type) {
     document.querySelectorAll('.gst-rate-btn').forEach(btn => btn.classList.remove('active'));
   } else {
     document.getElementById('gst-rate-selector').style.display = 'block';
+    // The 5% button is styled "active" by default in the HTML so the rate
+    // selector never looks empty right after switching off NILL — keep
+    // that visual true by actually selecting it, instead of leaving
+    // trip-gst-rate at 0 while the button looks chosen (that mismatch was
+    // tripping the "please select a rate" validation on Continue even
+    // though a rate visibly appeared selected).
+    if (document.getElementById('trip-gst-rate').value == 0) selectGstRate(5);
   }
 }
 

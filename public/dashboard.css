@@ -1618,6 +1618,14 @@ body:hover .cursor-circle,body:hover .cursor-dot{opacity:1;}
   .left-nav:hover .lni-label{ opacity:1; width:100%; }
 
   .dash-main{padding:1.25rem 1.25rem calc(1.25rem + var(--mobile-nav-h));}
+
+  /* The bottom tab bar (added above) sits at z-index 600, but the toast's
+     own z-index (99999) and fixed 2rem bottom offset put it right in the
+     nav bar's territory, so a toast at this width visually smeared across
+     the tab labels. Clear the nav bar height and center the toast instead
+     of pinning it to the right, which reads better at phone width anyway. */
+  .toast{ bottom:calc(var(--mobile-nav-h) + .85rem); right:1rem; left:1rem; justify-content:center; }
+
   .overview-cards{grid-template-columns:1fr 1fr;}
   .avp-fields{grid-template-columns:1fr;}
   body{cursor:auto;}
